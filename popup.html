@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuickNote</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+
+  <!-- ── HEADER ── -->
+  <header class="header">
+    <div class="header-left">
+      <span class="logo">🗒 QuickNote</span>
+      <span class="note-count" id="noteCount">0 notes</span>
+    </div>
+    <div class="header-right">
+      <button class="icon-btn" id="exportBtn" title="Export notes">⬇</button>
+      <button class="icon-btn" id="themeBtn" title="Toggle dark mode">🌙</button>
+    </div>
+  </header>
+
+  <!-- ── TOOLBAR ── -->
+  <div class="toolbar">
+    <button class="toolbar-btn active" id="btnNew">＋ New</button>
+    <button class="toolbar-btn" id="btnSearch">⌕ Search</button>
+    <button class="toolbar-btn" id="btnList">≡ All Notes</button>
+  </div>
+
+  <!-- ══ VIEW: NEW / EDIT NOTE ══ -->
+  <div class="view" id="viewNew">
+    <div class="form-group">
+      <input type="text" id="noteTitle" class="input" placeholder="Title  (optional)" maxlength="120" />
+    </div>
+    <div class="form-group">
+      <textarea id="noteBody" class="textarea" placeholder="Your note…" rows="5"></textarea>
+      <div class="char-count" id="charCount">0 chars · 0 words</div>
+    </div>
+    <div class="form-group">
+      <input type="text" id="noteComment" class="input small" placeholder="Comment  (optional)" maxlength="200" />
+    </div>
+    <div class="form-actions">
+      <button class="btn-secondary" id="btnCancelEdit">Cancel</button>
+      <button class="btn-primary" id="btnSave">Save →</button>
+    </div>
+    <p class="hint">Tip: use #tag anywhere in the body to auto-tag your note.</p>
+  </div>
+
+  <!-- ══ VIEW: SEARCH ══ -->
+  <div class="view hidden" id="viewSearch">
+    <div class="search-bar">
+      <input type="text" id="searchInput" class="input" placeholder="Search notes…" />
+    </div>
+    <div class="search-modes">
+      <button class="mode-btn active" data-mode="normal">Normal</button>
+      <button class="mode-btn" data-mode="strict">Aa Strict</button>
+      <button class="mode-btn" data-mode="regex">.*  Regex</button>
+    </div>
+    <div class="search-error hidden" id="searchError">⚠ Invalid regex</div>
+    <div class="notes-list" id="searchResults"></div>
+  </div>
+
+  <!-- ══ VIEW: ALL NOTES ══ -->
+  <div class="view hidden" id="viewList">
+    <div class="notes-list" id="allNotes"></div>
+    <div class="empty-state hidden" id="emptyState">
+      <div class="empty-icon">✏️</div>
+      <p>No notes yet.<br/>Hit <strong>＋ New</strong> to write one!</p>
+    </div>
+  </div>
+
+  <!-- ── TOAST ── -->
+  <div class="toast hidden" id="toast"></div>
+
+  <!-- ── DELETE CONFIRM DIALOG ── -->
+  <div class="overlay hidden" id="overlay">
+    <div class="dialog">
+      <p class="dialog-msg">Delete this note?</p>
+      <div class="dialog-actions">
+        <button class="btn-secondary" id="btnCancelDelete">Keep it</button>
+        <button class="btn-danger" id="btnConfirmDelete">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
