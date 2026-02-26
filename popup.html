@@ -30,13 +30,22 @@
     <button class="toolbar-btn" id="btnList">≡ All Notes</button>
   </div>
 
+  <!-- ── SORT BAR (shows in List view) ── -->
+  <div class="sort-bar hidden" id="sortBar">
+    <span class="sort-label">Sort:</span>
+    <button class="sort-btn active" data-sort="newest">Newest</button>
+    <button class="sort-btn" data-sort="oldest">Oldest</button>
+    <button class="sort-btn" data-sort="az">A→Z</button>
+    <button class="sort-btn" data-sort="color">Color</button>
+  </div>
+
   <!-- ══ VIEW: NEW / EDIT NOTE ══ -->
   <div class="view" id="viewNew">
     <div class="form-group">
       <input type="text" id="noteTitle" class="input" placeholder="Title  (optional)" maxlength="120" />
     </div>
     <div class="form-group">
-      <textarea id="noteBody" class="textarea" placeholder="Your note…" rows="5"></textarea>
+      <textarea id="noteBody" class="textarea" placeholder="Your note…" rows="5" maxlength="5000"></textarea>
       <div class="char-count" id="charCount">0 chars · 0 words</div>
     </div>
     <div class="form-group">
@@ -46,7 +55,7 @@
       <button class="btn-secondary" id="btnCancelEdit">Cancel</button>
       <button class="btn-primary" id="btnSave">Save →</button>
     </div>
-    <p class="hint">Tip: use #tag anywhere in the body to auto-tag your note.</p>
+    <p class="hint">Tip: use #tag anywhere in the body to auto-tag your note. · Alt+N: New · Alt+S: Search · Esc: Cancel</p>
   </div>
 
   <!-- ══ VIEW: SEARCH ══ -->
@@ -65,7 +74,15 @@
 
   <!-- ══ VIEW: ALL NOTES ══ -->
   <div class="view hidden" id="viewList">
-    <div class="notes-list" id="allNotes"></div>
+    <div class="content-with-sidebar">
+      <div class="tag-sidebar" id="tagSidebar">
+        <div class="sidebar-header">Tags</div>
+        <div class="tag-list" id="tagList"></div>
+      </div>
+      <div class="main-content">
+        <div class="notes-list" id="allNotes"></div>
+      </div>
+    </div>
     <div class="empty-state hidden" id="emptyState">
       <div class="empty-icon">✏️</div>
       <p>No notes yet.<br/>Hit <strong>＋ New</strong> to write one!</p>

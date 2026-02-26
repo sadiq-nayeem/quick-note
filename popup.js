@@ -8,8 +8,11 @@ let editingId  = null;
 let deleteId   = null;
 let searchMode = 'normal';  // 'normal' | 'strict' | 'regex'
 let currentView = 'new';    // 'new' | 'search' | 'list'
+let sortMode   = 'newest';  // 'newest' | 'oldest' | 'az' | 'color'
+let activeTag  = null;      // currently filtered tag
 
 const COLORS = 7; // 0..6 — matches CSS .nc-0 … .nc-6
+const MAX_BODY = 5000; // character limit for warning
 
 // ── UTILS ──────────────────────────────────────
 function uid() {
@@ -112,6 +115,10 @@ const btnList        = document.getElementById('btnList');
 const viewNew        = document.getElementById('viewNew');
 const viewSearch     = document.getElementById('viewSearch');
 const viewList       = document.getElementById('viewList');
+const sortBar        = document.getElementById('sortBar');
+const sortBtns       = document.querySelectorAll('.sort-btn');
+const tagSidebar     = document.getElementById('tagSidebar');
+const tagList        = document.getElementById('tagList');
 
 const noteTitle      = document.getElementById('noteTitle');
 const noteBody       = document.getElementById('noteBody');
@@ -148,6 +155,34 @@ themeBtn.addEventListener('click', () => {
   }
 });
 
+// ── KEYBOARD SHORTCUTS ──────────────────────────
+document.addEventListener('keydown', e => {
+  // Alt+N: New note
+  if (e.altKey && e.key === 'n') {
+    e.preventDefault();
+    editingId = null;
+    showView('new');
+    return;
+  }
+  // Alt+S: Search
+  if (e.altKey && e.key === 's') {
+    e.preventDefault();
+    showView('search');
+    return;
+  }
+  // Esc: Cancel dialog or exit edit mode
+  if (e.key === 'Escape') {
+    if (!overlay.classList.contains('hidden')) {
+      deleteId = null;
+      overlay.classList.add('hidden');
+    } else if (editingId) {
+      resetForm();
+      showView('list');
+    }
+    return;
+  }
+});
+
 // ── EXPORT ──────────────────────────────────────
 exportBtn.addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(notes, null, 2)], { type: 'application/json' });
@@ -177,7 +212,9 @@ function showView(name) {
   btnSearch.classList.toggle('active', name === 'search');
   btnList.classList.toggle('active',   name === 'list');
 
-  if (name === 'list')   renderAllNotes();
+  sortBar.classList.toggle('hidden', name !== 'list');
+
+  if (name === 'list') { renderAllNotes(); renderTagSidebar(); }
   if (name === 'search') { searchInput.focus(); renderSearch(); }
   if (name === 'new' && !editingId) resetForm();
 }
@@ -185,6 +222,16 @@ function showView(name) {
 btnNew.addEventListener('click',    () => { editingId = null; showView('new'); });
 btnSearch.addEventListener('click', () => showView('search'));
 btnList.addEventListener('click',   () => showView('list'));
+
+// ── SORT BUTTONS ────────────────────────────────
+sortBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    sortBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    sortMode = btn.dataset.sort;
+    renderAllNotes();
+  });
+});
 
 // ── FORM ────────────────────────────────────────
 function resetForm() {
@@ -195,10 +242,21 @@ function resetForm() {
   charCount.textContent = '0 chars · 0 words';
   btnSave.textContent = 'Save →';
   btnCancelEdit.style.display = 'none';
+  noteBody.classList.remove('warning');
+  charCount.classList.remove('warning');
 }
 
 noteBody.addEventListener('input', () => {
   charCount.textContent = countWordsChars(noteBody.value);
+  // Character limit warning
+  const len = noteBody.value.length;
+  if (len > MAX_BODY * 0.9) {
+    noteBody.classList.add('warning');
+    charCount.classList.add('warning');
+  } else {
+    noteBody.classList.remove('warning');
+    charCount.classList.remove('warning');
+  }
 });
 
 btnCancelEdit.addEventListener('click', () => {
@@ -251,9 +309,24 @@ function shakeEl(el) {
 // ── RENDER CARDS ────────────────────────────────
 function sortedNotes(list) {
   return [...list].sort((a, b) => {
+    // Pinned notes always first
     if (a.pinned && !b.pinned) return -1;
     if (!a.pinned && b.pinned) return  1;
-    return b.updatedAt - a.updatedAt;
+
+    // Then apply selected sort mode
+    switch (sortMode) {
+      case 'oldest':
+        return a.updatedAt - b.updatedAt;
+      case 'az':
+        const titleA = (a.title || a.body || '').toLowerCase();
+        const titleB = (b.title || b.body || '').toLowerCase();
+        return titleA.localeCompare(titleB);
+      case 'color':
+        return a.color - b.color;
+      case 'newest':
+      default:
+        return b.updatedAt - a.updatedAt;
+    }
   });
 }
 
@@ -283,6 +356,7 @@ function buildCard(note, query = '', mode = 'normal') {
       ${timeHtml}
       <div class="note-actions">
         <button class="note-action-btn" data-action="pin"  title="${note.pinned ? 'Unpin' : 'Pin'}">${note.pinned ? '📌' : '📍'}</button>
+        <button class="note-action-btn" data-action="duplicate" title="Duplicate">📄</button>
         <button class="note-action-btn" data-action="copy" title="Copy body">📋</button>
         <button class="note-action-btn" data-action="edit" title="Edit">✏️</button>
         <button class="note-action-btn" data-action="del"  title="Delete">🗑</button>
@@ -301,13 +375,57 @@ function buildCard(note, query = '', mode = 'normal') {
 
 function renderAllNotes() {
   allNotes.innerHTML = '';
-  const sorted = sortedNotes(notes);
+  let filtered = notes;
+  if (activeTag) {
+    filtered = notes.filter(n => (n.tags || []).includes(activeTag));
+  }
+  const sorted = sortedNotes(filtered);
   if (sorted.length === 0) {
     emptyState.classList.remove('hidden');
   } else {
     emptyState.classList.add('hidden');
     sorted.forEach(n => allNotes.appendChild(buildCard(n)));
   }
+}
+
+// ── TAG SIDEBAR ──────────────────────────────────
+function renderTagSidebar() {
+  tagList.innerHTML = '';
+
+  // Count tags
+  const tagCounts = {};
+  notes.forEach(n => {
+    (n.tags || []).forEach(t => {
+      tagCounts[t] = (tagCounts[t] || 0) + 1;
+    });
+  });
+
+  // Sort tags by count
+  const sortedTags = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]);
+
+  // "All" button
+  const allBtn = document.createElement('div');
+  allBtn.className = `tag-filter ${!activeTag ? 'active' : ''}`;
+  allBtn.textContent = `All ${notes.length > 0 ? `(${notes.length})` : ''}`;
+  allBtn.addEventListener('click', () => {
+    activeTag = null;
+    renderTagSidebar();
+    renderAllNotes();
+  });
+  tagList.appendChild(allBtn);
+
+  // Tag buttons
+  sortedTags.forEach(([tag, count]) => {
+    const btn = document.createElement('div');
+    btn.className = `tag-filter ${activeTag === tag ? 'active' : ''}`;
+    btn.innerHTML = `${escapeHtml(tag)} <span class="tag-count">(${count})</span>`;
+    btn.addEventListener('click', () => {
+      activeTag = activeTag === tag ? null : tag;
+      renderTagSidebar();
+      renderAllNotes();
+    });
+    tagList.appendChild(btn);
+  });
 }
 
 // ── SEARCH ──────────────────────────────────────
@@ -356,6 +474,22 @@ function handleCardAction(action, id) {
     navigator.clipboard.writeText(note.body).then(() => showToast('📋 Copied!'));
   }
 
+  if (action === 'duplicate') {
+    const duplicate = {
+      ...note,
+      id: uid(),
+      title: note.title ? `${note.title} (copy)` : '',
+      pinned: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    notes.unshift(duplicate);
+    saveNotes();
+    if (currentView === 'list') { renderAllNotes(); renderTagSidebar(); }
+    if (currentView === 'search') renderSearch();
+    showToast('📄 Note duplicated!');
+  }
+
   if (action === 'edit') {
     editingId = id;
     noteTitle.value   = note.title   || '';
@@ -385,7 +519,7 @@ btnConfirmDelete.addEventListener('click', () => {
   saveNotes();
   overlay.classList.add('hidden');
   deleteId = null;
-  if (currentView === 'list')   renderAllNotes();
+  if (currentView === 'list') { renderAllNotes(); renderTagSidebar(); }
   if (currentView === 'search') renderSearch();
   showToast('🗑 Note deleted');
 });
