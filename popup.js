@@ -768,14 +768,6 @@ function showToastWithUndo(msg, undoCallback) {
     pendingDelete = null;
   }, 5000);
 }
-  void toast.offsetWidth;
-  toast.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
-    toast.classList.remove('show');
-    setTimeout(() => toast.classList.add('hidden'), 220);
-  }, 2000);
-}
 
 // ── SHAKE KEYFRAME ───────────────────────────────
 const style = document.createElement('style');
