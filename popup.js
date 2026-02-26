@@ -346,9 +346,9 @@ function resetForm() {
   templateBtns.forEach(b => b.classList.remove('active'));
   templateBtns[0].classList.add('active');
 
-  // Reset color buttons
+  // Reset color buttons - random is default
   colorBtns.forEach(b => b.classList.remove('active'));
-  btnRandomColor.classList.remove('active');
+  btnRandomColor.classList.add('active');
 }
 
 noteBody.addEventListener('input', () => {

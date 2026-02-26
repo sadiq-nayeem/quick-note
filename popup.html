@@ -65,8 +65,9 @@
     <!-- Color Picker -->
     <div class="color-picker">
       <span class="color-label">Color:</span>
+      <button class="color-btn-random active" id="btnRandomColor" title="Random color">🎲</button>
       <div class="color-options" id="colorOptions">
-        <button class="color-btn c-0 active" data-color="0"></button>
+        <button class="color-btn c-0" data-color="0"></button>
         <button class="color-btn c-1" data-color="1"></button>
         <button class="color-btn c-2" data-color="2"></button>
         <button class="color-btn c-3" data-color="3"></button>
@@ -74,7 +75,6 @@
         <button class="color-btn c-5" data-color="5"></button>
         <button class="color-btn c-6" data-color="6"></button>
       </div>
-      <button class="color-btn-random" id="btnRandomColor" title="Random color">🎲</button>
     </div>
 
     <div class="form-actions">
@@ -122,7 +122,7 @@
   </div>
 
   <!-- ── HIDDEN FILE INPUT FOR IMPORT ── -->
-  <input type="file" id="importInput" class="hidden" accept=".json" />
+  <input type="file" id="importInput" style="display: none;" accept=".json" />
 
   <!-- ── DELETE CONFIRM DIALOG ── -->
   <div class="overlay hidden" id="overlay">
