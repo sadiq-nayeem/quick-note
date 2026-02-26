@@ -55,7 +55,12 @@
       <input type="text" id="noteTitle" class="input" placeholder="Title  (optional)" maxlength="120" />
     </div>
     <div class="form-group">
+      <div class="markdown-toolbar">
+        <span class="markdown-label">Markdown:</span>
+        <button class="markdown-toggle" id="btnMarkdownToggle" type="button">Preview 👁</button>
+      </div>
       <textarea id="noteBody" class="textarea" placeholder="Your note…" rows="5" maxlength="5000"></textarea>
+      <div class="markdown-preview hidden" id="markdownPreview"></div>
       <div class="char-count" id="charCount">0 chars · 0 words</div>
     </div>
     <div class="form-group">

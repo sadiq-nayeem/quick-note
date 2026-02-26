@@ -82,6 +82,72 @@ function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// ── MARKDOWN PARSER ───────────────────────────────
+function parseMarkdown(text) {
+  if (!text) return '';
+
+  let html = text;
+
+  // Escape HTML first
+  html = escapeHtml(html);
+
+  // Code blocks (must be before inline code)
+  html = html.replace(/```(\w*)([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+
+  // Inline code
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  // Headers
+  html = html.replace(/^### (.*$)/gm, '<h3>$1</h3>');
+  html = html.replace(/^## (.*$)/gm, '<h2>$1</h2>');
+  html = html.replace(/^# (.*$)/gm, '<h1>$1</h1>');
+
+  // Bold and Italic
+  html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  html = html.replace(/___(.+?)___/g, '<strong><em>$1</em></strong>');
+  html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+  html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+
+  // Strikethrough
+  html = html.replace(/~~(.+?)~~/g, '<del>$1</del>');
+
+  // Blockquotes
+  html = html.replace(/^&gt; (.*$)/gm, '<blockquote>$1</blockquote>');
+
+  // Horizontal rule
+  html = html.replace(/^---$/gm, '<hr>');
+  html = html.replace(/^\*\*\*$/gm, '<hr>');
+
+  // Checkboxes (todo items)
+  html = html.replace(/^- \[x\] (.*)$/gm, '<div><input type="checkbox" checked disabled> $1</div>');
+  html = html.replace(/^- \[ \] (.*)$/gm, '<div><input type="checkbox" disabled> $1</div>');
+
+  // Unordered lists
+  html = html.replace(/^- (.*)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+  html = html.replace(/<\/ul>\s*<ul>/g, '');
+
+  // Ordered lists
+  html = html.replace(/^\d+\. (.*)$/gm, '<oli>$1</oli>');
+  html = html.replace(/(<oli>.*<\/oli>)/s, '<ol>$1</ol>'.replace(/oli/g, 'li'));
+  html = html.replace(/<\/ol>\s*<ol>/g, '');
+
+  // Links
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+
+  // Line breaks to <br>, but not in block elements
+  html = html.replace(/\n/g, '<br>');
+
+  // Remove <br> inside block elements
+  html = html.replace(/<\/?(h[1-3]|pre|code|ul|ol|li|blockquote|hr|div)>/g, '\n$&');
+  html = html.replace(/<br>(\s*<\/?(h[1-3]|pre|code|ul|ol|li|blockquote|hr|div)>)/g, '$1');
+  html = html.replace(/(<\/?(?:h[1-3]|pre|code|ul|ol|li|blockquote|hr|div)>)<br>/g, '$1');
+
+  return html;
+}
+
 function highlight(text, query, mode) {
   if (!query) return escapeHtml(text);
   let pattern;
@@ -147,6 +213,9 @@ const noteComment    = document.getElementById('noteComment');
 const charCount      = document.getElementById('charCount');
 const btnSave        = document.getElementById('btnSave');
 const btnCancelEdit  = document.getElementById('btnCancelEdit');
+
+const btnMarkdownToggle = document.getElementById('btnMarkdownToggle');
+const markdownPreview = document.getElementById('markdownPreview');
 
 const searchInput    = document.getElementById('searchInput');
 const modeBtns       = document.querySelectorAll('.mode-btn');
@@ -342,6 +411,13 @@ function resetForm() {
   noteBody.classList.remove('warning');
   charCount.classList.remove('warning');
 
+  // Reset markdown preview
+  markdownPreview.classList.add('hidden');
+  noteBody.classList.remove('hidden');
+  btnMarkdownToggle.classList.remove('active');
+  btnMarkdownToggle.textContent = 'Preview 👁';
+  markdownPreview.innerHTML = '';
+
   // Reset template buttons
   templateBtns.forEach(b => b.classList.remove('active'));
   templateBtns[0].classList.add('active');
@@ -361,6 +437,29 @@ noteBody.addEventListener('input', () => {
   } else {
     noteBody.classList.remove('warning');
     charCount.classList.remove('warning');
+  }
+  // Update markdown preview if visible
+  if (!markdownPreview.classList.contains('hidden')) {
+    markdownPreview.innerHTML = parseMarkdown(noteBody.value);
+  }
+});
+
+// ── MARKDOWN TOGGLE ───────────────────────────────
+btnMarkdownToggle.addEventListener('click', () => {
+  const isPreview = markdownPreview.classList.contains('hidden');
+  if (isPreview) {
+    // Show preview
+    markdownPreview.classList.remove('hidden');
+    noteBody.classList.add('hidden');
+    btnMarkdownToggle.classList.add('active');
+    btnMarkdownToggle.textContent = 'Edit ✏️';
+    markdownPreview.innerHTML = parseMarkdown(noteBody.value);
+  } else {
+    // Show editor
+    markdownPreview.classList.add('hidden');
+    noteBody.classList.remove('hidden');
+    btnMarkdownToggle.classList.remove('active');
+    btnMarkdownToggle.textContent = 'Preview 👁';
   }
 });
 
