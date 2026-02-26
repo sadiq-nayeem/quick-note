@@ -18,6 +18,7 @@
       <span class="note-count" id="noteCount">0 notes</span>
     </div>
     <div class="header-right">
+      <button class="icon-btn" id="importBtn" title="Import notes">⬆</button>
       <button class="icon-btn" id="exportBtn" title="Export notes">⬇</button>
       <button class="icon-btn" id="themeBtn" title="Toggle dark mode">🌙</button>
     </div>
@@ -41,6 +42,15 @@
 
   <!-- ══ VIEW: NEW / EDIT NOTE ══ -->
   <div class="view" id="viewNew">
+    <!-- Template Bar -->
+    <div class="template-bar">
+      <span class="template-label">Template:</span>
+      <button class="template-btn active" data-template="">Blank</button>
+      <button class="template-btn" data-template="meeting">Meeting</button>
+      <button class="template-btn" data-template="todo">Todo</button>
+      <button class="template-btn" data-template="idea">Idea</button>
+    </div>
+
     <div class="form-group">
       <input type="text" id="noteTitle" class="input" placeholder="Title  (optional)" maxlength="120" />
     </div>
@@ -51,6 +61,22 @@
     <div class="form-group">
       <input type="text" id="noteComment" class="input small" placeholder="Comment  (optional)" maxlength="200" />
     </div>
+
+    <!-- Color Picker -->
+    <div class="color-picker">
+      <span class="color-label">Color:</span>
+      <div class="color-options" id="colorOptions">
+        <button class="color-btn c-0 active" data-color="0"></button>
+        <button class="color-btn c-1" data-color="1"></button>
+        <button class="color-btn c-2" data-color="2"></button>
+        <button class="color-btn c-3" data-color="3"></button>
+        <button class="color-btn c-4" data-color="4"></button>
+        <button class="color-btn c-5" data-color="5"></button>
+        <button class="color-btn c-6" data-color="6"></button>
+      </div>
+      <button class="color-btn-random" id="btnRandomColor" title="Random color">🎲</button>
+    </div>
+
     <div class="form-actions">
       <button class="btn-secondary" id="btnCancelEdit">Cancel</button>
       <button class="btn-primary" id="btnSave">Save →</button>
@@ -90,7 +116,13 @@
   </div>
 
   <!-- ── TOAST ── -->
-  <div class="toast hidden" id="toast"></div>
+  <div class="toast hidden" id="toast">
+    <span class="toast-msg" id="toastMsg"></span>
+    <button class="toast-undo hidden" id="toastUndo">Undo</button>
+  </div>
+
+  <!-- ── HIDDEN FILE INPUT FOR IMPORT ── -->
+  <input type="file" id="importInput" class="hidden" accept=".json" />
 
   <!-- ── DELETE CONFIRM DIALOG ── -->
   <div class="overlay hidden" id="overlay">

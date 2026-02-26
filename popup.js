@@ -10,9 +10,28 @@ let searchMode = 'normal';  // 'normal' | 'strict' | 'regex'
 let currentView = 'new';    // 'new' | 'search' | 'list'
 let sortMode   = 'newest';  // 'newest' | 'oldest' | 'az' | 'color'
 let activeTag  = null;      // currently filtered tag
+let selectedColor = null;   // manually selected color
+let pendingDelete = null;   // for undo delete
+let undoTimer = null;       // undo timeout timer
 
 const COLORS = 7; // 0..6 — matches CSS .nc-0 … .nc-6
 const MAX_BODY = 5000; // character limit for warning
+
+// ── TEMPLATES ────────────────────────────────────
+const TEMPLATES = {
+  meeting: {
+    title: 'Meeting Notes',
+    body: 'Date: \nAttendees: \n\nAgenda:\n- \n- \n\nNotes:\n\nAction Items:\n- [ ] '
+  },
+  todo: {
+    title: 'Todo List',
+    body: '- [ ] \n- [ ] \n- [ ] \n- [ ] '
+  },
+  idea: {
+    title: 'Quick Idea',
+    body: 'Idea: \n\nWhy: \n\nNext steps: '
+  }
+};
 
 // ── UTILS ──────────────────────────────────────
 function uid() {
@@ -105,7 +124,9 @@ function saveNotes() {
 
 // ── DOM REFS ────────────────────────────────────
 const themeBtn       = document.getElementById('themeBtn');
+const importBtn      = document.getElementById('importBtn');
 const exportBtn      = document.getElementById('exportBtn');
+const importInput    = document.getElementById('importInput');
 const noteCountEl    = document.getElementById('noteCount');
 
 const btnNew         = document.getElementById('btnNew');
@@ -140,6 +161,12 @@ const toast          = document.getElementById('toast');
 const overlay        = document.getElementById('overlay');
 const btnCancelDelete = document.getElementById('btnCancelDelete');
 const btnConfirmDelete = document.getElementById('btnConfirmDelete');
+
+const templateBtns   = document.querySelectorAll('.template-btn');
+const colorBtns      = document.querySelectorAll('.color-btn');
+const btnRandomColor = document.getElementById('btnRandomColor');
+const toastMsg       = document.getElementById('toastMsg');
+const toastUndo      = document.getElementById('toastUndo');
 
 // ── THEME ───────────────────────────────────────
 themeBtn.addEventListener('click', () => {
@@ -183,6 +210,42 @@ document.addEventListener('keydown', e => {
   }
 });
 
+// ── TEMPLATES ────────────────────────────────────
+templateBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    templateBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const template = btn.dataset.template;
+    if (TEMPLATES[template]) {
+      noteTitle.value = TEMPLATES[template].title;
+      noteBody.value = TEMPLATES[template].body;
+      charCount.textContent = countWordsChars(TEMPLATES[template].body);
+      noteBody.focus();
+    } else if (template === '') {
+      // Blank template - clear form
+      noteTitle.value = '';
+      noteBody.value = '';
+      charCount.textContent = '0 chars · 0 words';
+    }
+  });
+});
+
+// ── COLOR PICKER ────────────────────────────────
+colorBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    colorBtns.forEach(b => b.classList.remove('active'));
+    btnRandomColor.classList.remove('active');
+    btn.classList.add('active');
+    selectedColor = parseInt(btn.dataset.color);
+  });
+});
+
+btnRandomColor.addEventListener('click', () => {
+  colorBtns.forEach(b => b.classList.remove('active'));
+  btnRandomColor.classList.add('active');
+  selectedColor = null; // null means random
+});
+
 // ── EXPORT ──────────────────────────────────────
 exportBtn.addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(notes, null, 2)], { type: 'application/json' });
@@ -193,6 +256,39 @@ exportBtn.addEventListener('click', () => {
   a.click();
   URL.revokeObjectURL(url);
   showToast('📦 Notes exported!');
+});
+
+// ── IMPORT ──────────────────────────────────────
+importBtn.addEventListener('click', () => importInput.click());
+
+importInput.addEventListener('change', () => {
+  const file = importInput.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (!Array.isArray(imported)) throw new Error('Invalid format');
+
+      // Merge with existing notes (avoid duplicates by ID)
+      let added = 0;
+      imported.forEach(note => {
+        if (note.id && !notes.find(n => n.id === note.id)) {
+          notes.push(note);
+          added++;
+        }
+      });
+
+      saveNotes();
+      if (currentView === 'list') { renderAllNotes(); renderTagSidebar(); }
+      showToast(`📥 Imported ${added} note${added !== 1 ? 's' : ''}!`);
+    } catch {
+      showToast('❌ Import failed: invalid file');
+    }
+    importInput.value = ''; // reset
+  };
+  reader.readAsText(file);
 });
 
 // ── NOTE COUNT ──────────────────────────────────
@@ -236,6 +332,7 @@ sortBtns.forEach(btn => {
 // ── FORM ────────────────────────────────────────
 function resetForm() {
   editingId = null;
+  selectedColor = null;
   noteTitle.value   = '';
   noteBody.value    = '';
   noteComment.value = '';
@@ -244,6 +341,14 @@ function resetForm() {
   btnCancelEdit.style.display = 'none';
   noteBody.classList.remove('warning');
   charCount.classList.remove('warning');
+
+  // Reset template buttons
+  templateBtns.forEach(b => b.classList.remove('active'));
+  templateBtns[0].classList.add('active');
+
+  // Reset color buttons
+  colorBtns.forEach(b => b.classList.remove('active'));
+  btnRandomColor.classList.remove('active');
 }
 
 noteBody.addEventListener('input', () => {
@@ -280,14 +385,22 @@ function saveNote() {
   if (editingId) {
     const idx = notes.findIndex(n => n.id === editingId);
     if (idx > -1) {
-      notes[idx] = { ...notes[idx], title, body, comment, tags, updatedAt: Date.now() };
+      // Preserve existing color/favorite unless manually changed
+      const existing = notes[idx];
+      notes[idx] = {
+        ...existing,
+        title, body, comment, tags,
+        color: selectedColor !== null ? selectedColor : existing.color,
+        updatedAt: Date.now()
+      };
     }
     showToast('✏️ Note updated!');
   } else {
     const newNote = {
       id: uid(), title, body, comment, tags,
-      color: randColor(),
+      color: selectedColor !== null ? selectedColor : randColor(),
       pinned: false,
+      favorite: false,
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
@@ -335,10 +448,17 @@ function buildCard(note, query = '', mode = 'normal') {
   card.className = `note-card nc-${note.color}`;
   card.dataset.id = note.id;
 
+  // Make pinned notes draggable for reordering
+  if (note.pinned) {
+    card.draggable = true;
+    card.dataset.draggable = 'true';
+  }
+
   const titleHtml   = note.title   ? `<div class="note-title">${highlight(note.title,   query, mode)}</div>` : '';
   const bodyHtml    = note.body    ? `<div class="note-body">${highlight(note.body,    query, mode)}</div>` : '';
   const commentHtml = note.comment ? `<div class="note-comment">💬 ${highlight(note.comment, query, mode)}</div>` : '';
   const pinBadge    = note.pinned  ? `<span class="note-pin-badge">📌</span>` : '';
+  const favBadge    = note.favorite ? `<span class="note-fav-badge">⭐</span>` : '';
   const tagsHtml    = note.tags && note.tags.length
     ? `<div class="note-tags">${note.tags.map(t => `<span class="note-tag">${escapeHtml(t)}</span>`).join('')}</div>`
     : '';
@@ -348,6 +468,7 @@ function buildCard(note, query = '', mode = 'normal') {
 
   card.innerHTML = `
     ${pinBadge}
+    ${favBadge}
     ${titleHtml}
     ${bodyHtml}
     ${commentHtml}
@@ -356,6 +477,7 @@ function buildCard(note, query = '', mode = 'normal') {
       ${timeHtml}
       <div class="note-actions">
         <button class="note-action-btn" data-action="pin"  title="${note.pinned ? 'Unpin' : 'Pin'}">${note.pinned ? '📌' : '📍'}</button>
+        <button class="note-action-btn" data-action="favorite" title="${note.favorite ? 'Unfavorite' : 'Favorite'}">${note.favorite ? '⭐' : '☆'}</button>
         <button class="note-action-btn" data-action="duplicate" title="Duplicate">📄</button>
         <button class="note-action-btn" data-action="copy" title="Copy body">📋</button>
         <button class="note-action-btn" data-action="edit" title="Edit">✏️</button>
@@ -369,6 +491,40 @@ function buildCard(note, query = '', mode = 'normal') {
     if (!btn) return;
     handleCardAction(btn.dataset.action, note.id);
   });
+
+  // Drag and drop for pinned notes
+  if (note.pinned) {
+    card.addEventListener('dragstart', e => {
+      card.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', note.id);
+      e.dataTransfer.effectAllowed = 'move';
+    });
+
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      document.querySelectorAll('.note-card.drag-over').forEach(c => c.classList.remove('drag-over'));
+    });
+
+    card.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (card.dataset.draggable === 'true' && card.dataset.id !== note.id) {
+        card.classList.add('drag-over');
+      }
+    });
+
+    card.addEventListener('dragleave', () => {
+      card.classList.remove('drag-over');
+    });
+
+    card.addEventListener('drop', e => {
+      e.preventDefault();
+      card.classList.remove('drag-over');
+      const draggedId = e.dataTransfer.getData('text/plain');
+      if (draggedId && draggedId !== note.id) {
+        reorderPinnedNotes(draggedId, note.id);
+      }
+    });
+  }
 
   return card;
 }
@@ -470,6 +626,14 @@ function handleCardAction(action, id) {
     showToast(note.pinned ? '📌 Pinned!' : '📍 Unpinned');
   }
 
+  if (action === 'favorite') {
+    note.favorite = !note.favorite;
+    saveNotes();
+    if (currentView === 'list')   renderAllNotes();
+    if (currentView === 'search') renderSearch();
+    showToast(note.favorite ? '⭐ Favorited!' : '☆ Unfavorited');
+  }
+
   if (action === 'copy') {
     navigator.clipboard.writeText(note.body).then(() => showToast('📋 Copied!'));
   }
@@ -480,6 +644,7 @@ function handleCardAction(action, id) {
       id: uid(),
       title: note.title ? `${note.title} (copy)` : '',
       pinned: false,
+      favorite: false,
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
@@ -498,17 +663,55 @@ function handleCardAction(action, id) {
     charCount.textContent = countWordsChars(note.body || '');
     btnSave.textContent = 'Update →';
     btnCancelEdit.style.display = '';
+
+    // Set color picker to note's current color
+    colorBtns.forEach(b => b.classList.remove('active'));
+    btnRandomColor.classList.remove('active');
+    const colorBtn = document.querySelector(`.color-btn[data-color="${note.color}"]`);
+    if (colorBtn) colorBtn.classList.add('active');
+    selectedColor = note.color;
+
     showView('new');
     noteBody.focus();
   }
 
   if (action === 'del') {
-    deleteId = id;
-    overlay.classList.remove('hidden');
+    // Store for undo and remove immediately
+    pendingDelete = { ...note };
+    notes = notes.filter(n => n.id !== id);
+    saveNotes();
+
+    if (currentView === 'list') { renderAllNotes(); renderTagSidebar(); }
+    if (currentView === 'search') renderSearch();
+
+    // Show undo toast
+    showToastWithUndo('🗑 Note deleted', () => {
+      // Undo callback
+      notes.unshift(pendingDelete);
+      pendingDelete = null;
+      saveNotes();
+      if (currentView === 'list') { renderAllNotes(); renderTagSidebar(); }
+      if (currentView === 'search') renderSearch();
+      showToast('↩️ Note restored!');
+    });
   }
 }
 
-// ── DELETE DIALOG ───────────────────────────────
+// ── REORDER PINNED NOTES ──────────────────────────
+function reorderPinnedNotes(draggedId, targetId) {
+  const draggedIdx = notes.findIndex(n => n.id === draggedId);
+  const targetIdx = notes.findIndex(n => n.id === targetId);
+  if (draggedIdx === -1 || targetIdx === -1) return;
+
+  // Remove dragged note and insert at target position
+  const [dragged] = notes.splice(draggedIdx, 1);
+  notes.splice(targetIdx, 0, dragged);
+
+  saveNotes();
+  renderAllNotes();
+}
+
+// ── DELETE DIALOG (kept for reference, no longer used) ──
 btnCancelDelete.addEventListener('click', () => {
   deleteId = null;
   overlay.classList.add('hidden');
@@ -527,8 +730,44 @@ btnConfirmDelete.addEventListener('click', () => {
 // ── TOAST ────────────────────────────────────────
 let toastTimer;
 function showToast(msg) {
+  toastUndo.classList.add('hidden');
+  toastMsg.textContent = msg;
   toast.classList.remove('hidden');
-  toast.textContent = msg;
+  void toast.offsetWidth;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.classList.add('hidden'), 220);
+  }, 2000);
+}
+
+function showToastWithUndo(msg, undoCallback) {
+  clearTimeout(undoTimer);
+  toastMsg.textContent = msg;
+  toastUndo.classList.remove('hidden');
+  toast.classList.remove('hidden');
+  void toast.offsetWidth;
+  toast.classList.add('show');
+
+  // Clear any previous timer
+  clearTimeout(toastTimer);
+
+  // Set up undo button
+  toastUndo.onclick = () => {
+    clearTimeout(undoTimer);
+    toast.classList.remove('show');
+    setTimeout(() => toast.classList.add('hidden'), 220);
+    undoCallback();
+  };
+
+  // Auto-dismiss after 5 seconds
+  undoTimer = setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.classList.add('hidden'), 220);
+    pendingDelete = null;
+  }, 5000);
+}
   void toast.offsetWidth;
   toast.classList.add('show');
   clearTimeout(toastTimer);
