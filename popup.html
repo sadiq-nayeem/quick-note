@@ -68,6 +68,13 @@
     <div class="form-group">
       <input type="text" id="noteComment" class="input small" placeholder="Comment  (optional)" maxlength="200" />
     </div>
+    <div class="form-group">
+      <div class="reminder-row">
+        <input type="checkbox" id="reminderToggle" class="reminder-checkbox">
+        <input type="datetime-local" id="reminderDate" class="reminder-date" disabled>
+        <span class="reminder-label">🔔 Set reminder</span>
+      </div>
+    </div>
 
     <!-- Color Picker -->
     <div class="color-picker">
@@ -170,6 +177,11 @@
           <label class="setting-label">Always Show Action Buttons</label>
           <input type="checkbox" class="setting-checkbox" id="settingShowActions">
           <span class="setting-hint">Uncheck to show only on hover</span>
+        </div>
+        <div class="setting-group">
+          <label class="setting-label">Enable Reminders</label>
+          <input type="checkbox" class="setting-checkbox" id="settingReminders">
+          <span class="setting-hint">Allow setting date/time reminders on notes</span>
         </div>
         <div class="setting-group">
           <label class="setting-label">Theme</label>

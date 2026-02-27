@@ -288,6 +288,47 @@ body {
   margin-top: -4px;
 }
 
+/* ── REMINDER PICKER ── */
+.reminder-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.reminder-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.reminder-date {
+  flex: 1;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.reminder-date:not(:disabled) {
+  opacity: 1;
+  cursor: pointer;
+}
+.reminder-date:not(:disabled):focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.reminder-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-sub);
+  white-space: nowrap;
+}
+
 /* ── MARKDOWN TOOLBAR ── */
 .markdown-toolbar {
   display: flex;
@@ -572,6 +613,12 @@ body {
 .note-fav-badge {
   position: absolute;
   top: 8px; right: 62px;
+  font-size: 11px;
+  opacity: .7;
+}
+.note-rem-badge {
+  position: absolute;
+  top: 8px; right: 82px;
   font-size: 11px;
   opacity: .7;
 }

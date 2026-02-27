@@ -17,7 +17,8 @@ let undoTimer = null;       // undo timeout timer
 // Settings
 let settings = {
   defaultSort: 'newest',
-  showActionsAlways: false
+  showActionsAlways: false,
+  remindersEnabled: false
 };
 
 const COLORS = 7; // 0..6 — matches CSS .nc-0 … .nc-6
@@ -192,6 +193,7 @@ const settingSortOrder = document.getElementById('settingSortOrder');
 const settingShowActions = document.getElementById('settingShowActions');
 const btnSaveSettings = document.getElementById('btnSaveSettings');
 const btnClearAll = document.getElementById('btnClearAll');
+const settingReminders = document.getElementById('settingReminders');
 const themeOptions = document.querySelectorAll('.theme-option');
 
 const btnNew         = document.getElementById('btnNew');
@@ -212,6 +214,9 @@ const noteComment    = document.getElementById('noteComment');
 const charCount      = document.getElementById('charCount');
 const btnSave        = document.getElementById('btnSave');
 const btnCancelEdit  = document.getElementById('btnCancelEdit');
+
+const reminderToggle = document.getElementById('reminderToggle');
+const reminderDate = document.getElementById('reminderDate');
 
 const btnMarkdownToggle = document.getElementById('btnMarkdownToggle');
 const markdownPreview = document.getElementById('markdownPreview');
@@ -294,6 +299,7 @@ function applySettings() {
 function openSettings() {
   settingSortOrder.value = settings.defaultSort;
   settingShowActions.checked = settings.showActionsAlways;
+  settingReminders.checked = settings.remindersEnabled;
 
   // Set active theme option
   const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
@@ -317,6 +323,7 @@ settingsOverlay.addEventListener('click', e => {
 btnSaveSettings.addEventListener('click', () => {
   settings.defaultSort = settingSortOrder.value;
   settings.showActionsAlways = settingShowActions.checked;
+  settings.remindersEnabled = settingReminders.checked;
   saveSettings();
   sortMode = settings.defaultSort;
   applySettings();
@@ -442,6 +449,14 @@ btnRandomColor.addEventListener('click', () => {
   selectedColor = null; // null means random
 });
 
+// ── REMINDER TOGGLE ───────────────────────────────
+reminderToggle.addEventListener('change', () => {
+  reminderDate.disabled = !reminderToggle.checked;
+  if (!reminderToggle.checked) {
+    reminderDate.value = '';
+  }
+});
+
 // ── EXPORT ──────────────────────────────────────
 exportBtn.addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(notes, null, 2)], { type: 'application/json' });
@@ -552,6 +567,11 @@ function resetForm() {
   // Reset color buttons - random is default
   colorBtns.forEach(b => b.classList.remove('active'));
   btnRandomColor.classList.add('active');
+
+  // Reset reminder
+  reminderToggle.checked = false;
+  reminderDate.value = '';
+  reminderDate.disabled = true;
 }
 
 noteBody.addEventListener('input', () => {
@@ -608,17 +628,39 @@ function saveNote() {
   const comment = noteComment.value.trim();
   const tags    = extractTags(body);
 
+  // Handle reminder
+  let reminder = null;
+  if (settings.remindersEnabled && reminderToggle.checked && reminderDate.value) {
+    reminder = new Date(reminderDate.value).getTime();
+    // Only set if it's in the future
+    if (reminder <= Date.now()) {
+      reminder = null;
+      showToast('⚠️ Reminder must be in the future!');
+    }
+  }
+
   if (editingId) {
     const idx = notes.findIndex(n => n.id === editingId);
     if (idx > -1) {
+      // Clear old alarm if exists
+      if (notes[idx].reminder) {
+        chrome.alarms.clear(`reminder_${editingId}`);
+      }
+
       // Preserve existing color/favorite unless manually changed
       const existing = notes[idx];
       notes[idx] = {
         ...existing,
         title, body, comment, tags,
         color: selectedColor !== null ? selectedColor : existing.color,
+        reminder,
         updatedAt: Date.now()
       };
+
+      // Set new alarm
+      if (reminder) {
+        chrome.alarms.create(`reminder_${editingId}`, { when: reminder });
+      }
     }
     showToast('✏️ Note updated!');
   } else {
@@ -627,10 +669,17 @@ function saveNote() {
       color: selectedColor !== null ? selectedColor : randColor(),
       pinned: false,
       favorite: false,
+      reminder,
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
     notes.unshift(newNote);
+
+    // Set alarm for new note
+    if (reminder) {
+      chrome.alarms.create(`reminder_${newNote.id}`, { when: reminder });
+    }
+
     showToast('✅ Note saved!');
   }
 
@@ -685,6 +734,7 @@ function buildCard(note, query = '', mode = 'normal') {
   const commentHtml = note.comment ? `<div class="note-comment">💬 ${highlight(note.comment, query, mode)}</div>` : '';
   const pinBadge    = note.pinned  ? `<span class="note-pin-badge">📌</span>` : '';
   const favBadge    = note.favorite ? `<span class="note-fav-badge">⭐</span>` : '';
+  const remBadge    = note.reminder ? `<span class="note-rem-badge">🔔</span>` : '';
   const tagsHtml    = note.tags && note.tags.length
     ? `<div class="note-tags">${note.tags.map(t => `<span class="note-tag">${escapeHtml(t)}</span>`).join('')}</div>`
     : '';
@@ -695,6 +745,7 @@ function buildCard(note, query = '', mode = 'normal') {
   card.innerHTML = `
     ${pinBadge}
     ${favBadge}
+    ${remBadge}
     ${titleHtml}
     ${bodyHtml}
     ${commentHtml}
@@ -902,11 +953,29 @@ function handleCardAction(action, id) {
     if (colorBtn) colorBtn.classList.add('active');
     selectedColor = note.color;
 
+    // Set reminder
+    if (note.reminder && settings.remindersEnabled) {
+      reminderToggle.checked = true;
+      reminderDate.disabled = false;
+      const date = new Date(note.reminder);
+      // Format for datetime-local input: YYYY-MM-DDTHH:mm
+      reminderDate.value = date.toISOString().slice(0, 16);
+    } else {
+      reminderToggle.checked = false;
+      reminderDate.disabled = true;
+      reminderDate.value = '';
+    }
+
     showView('new');
     noteBody.focus();
   }
 
   if (action === 'del') {
+    // Clear alarm if exists
+    if (note.reminder) {
+      chrome.alarms.clear(`reminder_${id}`);
+    }
+
     // Store for undo and remove immediately
     pendingDelete = { ...note };
     notes = notes.filter(n => n.id !== id);

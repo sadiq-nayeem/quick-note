@@ -3,7 +3,10 @@
   "name": "QuickNote",
   "version": "1.0.0",
   "description": "Fast, beautiful, always-there note-taking. Type · Save · Go.",
-  "permissions": ["storage"],
+  "permissions": ["storage", "alarms", "notifications"],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "popup.html",
     "default_title": "QuickNote",
