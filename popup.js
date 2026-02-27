@@ -224,6 +224,13 @@ function applySettings() {
 function openSettings() {
   settingSortOrder.value = settings.defaultSort;
   settingShowActions.checked = settings.showActionsAlways;
+
+  // Set active theme option
+  const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+  themeOptions.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.theme === currentTheme);
+  });
+
   settingsOverlay.classList.remove('hidden');
 }
 
