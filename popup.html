@@ -63,6 +63,10 @@
       </div>
       <textarea id="noteBody" class="textarea" placeholder="Your note…" rows="5" maxlength="5000"></textarea>
       <div class="markdown-preview hidden" id="markdownPreview"></div>
+      <div class="rule-matches hidden" id="ruleMatches">
+        <span class="rule-matches-label">📜 Matched Rules:</span>
+        <div class="rule-match-list" id="ruleMatchList"></div>
+      </div>
       <div class="char-count" id="charCount">0 chars · 0 words</div>
     </div>
     <div class="form-group">
@@ -138,6 +142,89 @@
   <!-- ── HIDDEN FILE INPUT FOR IMPORT ── -->
   <input type="file" id="importInput" style="display: none;" accept=".json" />
 
+  <!-- ── RULES EDITOR MODAL ── -->
+  <div class="rules-overlay hidden" id="rulesOverlay">
+    <div class="rules-modal">
+      <div class="rules-header">
+        <h2>📜 Smart Rules Editor</h2>
+        <button class="rules-close" id="btnCloseRules">✕</button>
+      </div>
+      <div class="rules-body" id="rulesList">
+        <!-- Rules will be rendered here -->
+      </div>
+      <div class="rules-footer">
+        <button class="btn-secondary" id="btnAddRule">＋ Add New Rule</button>
+        <button class="btn-primary" id="btnSaveRules">Save Rules</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── RULE EDIT MODAL ── -->
+  <div class="rule-edit-overlay hidden" id="ruleEditOverlay">
+    <div class="rule-edit-modal">
+      <div class="rule-edit-header">
+        <h3 id="ruleEditTitle">Edit Rule</h3>
+        <button class="rule-edit-close" id="btnCloseRuleEdit">✕</button>
+      </div>
+      <div class="rule-edit-body">
+        <div class="rule-edit-group">
+          <label>Rule Name</label>
+          <input type="text" class="input" id="ruleName" placeholder="e.g., CL Tracker" maxlength="50">
+        </div>
+        <div class="rule-edit-group">
+          <label>Trigger Pattern (Regex)</label>
+          <input type="text" class="input" id="rulePattern" placeholder="e.g., CL-(\d+)" maxlength="200">
+          <span class="rule-hint">Use capture groups like $1, $2 in templates</span>
+        </div>
+        <div class="rule-edit-group">
+          <label>Title Template</label>
+          <input type="text" class="input" id="ruleTitle" placeholder="e.g., Review CL-$1" maxlength="120">
+        </div>
+        <div class="rule-edit-group">
+          <label>Comment Template</label>
+          <input type="text" class="input" id="ruleComment" placeholder="e.g., Check status" maxlength="200">
+        </div>
+        <div class="rule-edit-group">
+          <label>Reminder Interval</label>
+          <select class="input" id="ruleInterval">
+            <option value="">No Reminder</option>
+            <option value="30">30 minutes</option>
+            <option value="60">1 hour</option>
+            <option value="240">4 hours</option>
+            <option value="720">12 hours</option>
+            <option value="1440">24 hours</option>
+            <option value="2880">2 days</option>
+            <option value="10080">7 days</option>
+          </select>
+          <span class="rule-hint">Recurring reminder interval</span>
+        </div>
+        <div class="rule-edit-group">
+          <label>Color (optional)</label>
+          <div class="rule-colors" id="ruleColors">
+            <button class="rule-color-btn" data-color="">Auto</button>
+            <button class="rule-color-btn c-0" data-color="0"></button>
+            <button class="rule-color-btn c-1" data-color="1"></button>
+            <button class="rule-color-btn c-2" data-color="2"></button>
+            <button class="rule-color-btn c-3" data-color="3"></button>
+            <button class="rule-color-btn c-4" data-color="4"></button>
+            <button class="rule-color-btn c-5" data-color="5"></button>
+            <button class="rule-color-btn c-6" data-color="6"></button>
+          </div>
+        </div>
+        <div class="rule-edit-group">
+          <label>
+            <input type="checkbox" id="ruleEnabled" checked>
+            Enabled
+          </label>
+        </div>
+      </div>
+      <div class="rule-edit-footer">
+        <button class="btn-danger" id="btnDeleteRule">Delete</button>
+        <button class="btn-primary" id="btnSaveRule">Save Rule</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── MARKDOWN HELP TOOLTIP ── -->
   <div class="markdown-help-tooltip hidden" id="markdownHelpTooltip">
     <div class="mhelp-content">
@@ -182,6 +269,37 @@
           <label class="setting-label">Enable Reminders</label>
           <input type="checkbox" class="setting-checkbox" id="settingReminders">
           <span class="setting-hint">Allow setting date/time reminders on notes</span>
+        </div>
+        <div class="setting-group">
+          <label class="setting-label">Smart Rules</label>
+          <input type="checkbox" class="setting-checkbox" id="settingSmartRules">
+          <span class="setting-hint">Enable pattern-based automation</span>
+          <button class="btn-secondary settings-edit-rules" id="btnEditRules">Manage Rules →</button>
+        </div>
+        <div class="setting-group">
+          <label class="setting-label">Rules Trigger</label>
+          <select class="setting-select" id="settingRulesTrigger">
+            <option value="manual">Manual Only</option>
+            <option value="typing">While Typing</option>
+            <option value="autosave">Auto on Save</option>
+          </select>
+          <span class="setting-hint">When rules are applied</span>
+        </div>
+        <div class="setting-group">
+          <label class="setting-label">Multiple Rules Match</label>
+          <select class="setting-select" id="settingRulesPriority">
+            <option value="first">First Match Wins</option>
+            <option value="all">Apply All Matching</option>
+          </select>
+          <span class="setting-hint">How to handle multiple matching rules</span>
+        </div>
+        <div class="setting-group">
+          <label class="setting-label">Reminder Notification Action</label>
+          <select class="setting-select" id="settingReminderAction">
+            <option value="dismiss">Auto-Dismiss on Click</option>
+            <option value="snooze">Snooze 1 Hour on Click</option>
+            <option value="both">Let Me Choose</option>
+          </select>
         </div>
         <div class="setting-group">
           <label class="setting-label">Theme</label>

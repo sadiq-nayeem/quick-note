@@ -18,8 +18,16 @@ let undoTimer = null;       // undo timeout timer
 let settings = {
   defaultSort: 'newest',
   showActionsAlways: false,
-  remindersEnabled: false
+  remindersEnabled: false,
+  smartRulesEnabled: false,
+  rulesTrigger: 'manual',     // 'manual' | 'typing' | 'autosave'
+  rulesPriority: 'first',     // 'first' | 'all'
+  reminderAction: 'dismiss',  // 'dismiss' | 'snooze' | 'both'
+  smartRules: []              // Array of rule objects
 };
+
+// Rule being edited
+let editingRuleIndex = -1;
 
 const COLORS = 7; // 0..6 — matches CSS .nc-0 … .nc-6
 const MAX_BODY = 5000; // character limit for warning
@@ -87,6 +95,83 @@ function escapeHtml(str) {
 
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// ── SMART RULES ───────────────────────────────────
+function applyTemplate(template, captures) {
+  if (!template) return '';
+  let result = template;
+  captures.forEach((match, i) => {
+    result = result.replace(new RegExp(`\\$${i + 1}`, 'g'), match || '');
+  });
+  return result;
+}
+
+function findMatchingRules(text) {
+  if (!text || !settings.smartRulesEnabled) return [];
+  const matches = [];
+  for (const rule of settings.smartRules) {
+    if (!rule.enabled) continue;
+    try {
+      const regex = new RegExp(rule.pattern, 'gi');
+      const match = regex.exec(text);
+      if (match) {
+        matches.push({
+          rule,
+          captures: match.slice(1), // Exclude full match, keep groups
+          fullMatch: match[0]
+        });
+        if (settings.rulesPriority === 'first') break;
+      }
+    } catch {
+      // Invalid regex, skip
+    }
+  }
+  return matches;
+}
+
+function applyRule(matchData) {
+  const { rule, captures } = matchData;
+  if (rule.titleTemplate) {
+    noteTitle.value = applyTemplate(rule.titleTemplate, captures);
+  }
+  if (rule.commentTemplate) {
+    noteComment.value = applyTemplate(rule.commentTemplate, captures);
+  }
+  if (rule.color !== undefined && rule.color !== '') {
+    selectedColor = parseInt(rule.color);
+    colorBtns.forEach(b => b.classList.remove('active'));
+    btnRandomColor.classList.remove('active');
+    const colorBtn = document.querySelector(`.color-btn[data-color="${rule.color}"]`);
+    if (colorBtn) colorBtn.classList.add('active');
+  }
+  // Handle recurring reminder
+  if (rule.interval && rule.interval > 0) {
+    reminderToggle.checked = true;
+    reminderDate.disabled = false;
+    // Set reminder to interval from now
+    const reminderTime = Date.now() + (parseInt(rule.interval) * 60 * 1000);
+    reminderDate.value = new Date(reminderTime - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  }
+}
+
+function showRuleMatches(matches) {
+  if (matches.length === 0) {
+    ruleMatches.classList.add('hidden');
+    return;
+  }
+  ruleMatchList.innerHTML = '';
+  matches.forEach(m => {
+    const chip = document.createElement('div');
+    chip.className = 'rule-match-chip';
+    chip.innerHTML = `${m.rule.name} <span class="rule-match-chip-small">(${m.fullMatch})</span>`;
+    chip.addEventListener('click', () => {
+      applyRule(m);
+      showToast(`📜 Applied "${m.rule.name}"`);
+    });
+    ruleMatchList.appendChild(chip);
+  });
+  ruleMatches.classList.remove('hidden');
 }
 
 // ── MARKDOWN PARSER ───────────────────────────────
@@ -194,7 +279,37 @@ const settingShowActions = document.getElementById('settingShowActions');
 const btnSaveSettings = document.getElementById('btnSaveSettings');
 const btnClearAll = document.getElementById('btnClearAll');
 const settingReminders = document.getElementById('settingReminders');
+const settingSmartRules = document.getElementById('settingSmartRules');
+const settingRulesTrigger = document.getElementById('settingRulesTrigger');
+const settingRulesPriority = document.getElementById('settingRulesPriority');
+const settingReminderAction = document.getElementById('settingReminderAction');
 const themeOptions = document.querySelectorAll('.theme-option');
+
+// Smart Rules UI
+const btnEditRules = document.getElementById('btnEditRules');
+const rulesOverlay = document.getElementById('rulesOverlay');
+const btnCloseRules = document.getElementById('btnCloseRules');
+const rulesList = document.getElementById('rulesList');
+const btnAddRule = document.getElementById('btnAddRule');
+const btnSaveRules = document.getElementById('btnSaveRules');
+
+// Rule Edit Modal
+const ruleEditOverlay = document.getElementById('ruleEditOverlay');
+const btnCloseRuleEdit = document.getElementById('btnCloseRuleEdit');
+const ruleEditTitle = document.getElementById('ruleEditTitle');
+const ruleName = document.getElementById('ruleName');
+const rulePattern = document.getElementById('rulePattern');
+const ruleTitle = document.getElementById('ruleTitle');
+const ruleComment = document.getElementById('ruleComment');
+const ruleInterval = document.getElementById('ruleInterval');
+const ruleColors = document.getElementById('ruleColors');
+const ruleEnabled = document.getElementById('ruleEnabled');
+const btnSaveRule = document.getElementById('btnSaveRule');
+const btnDeleteRule = document.getElementById('btnDeleteRule');
+
+// Rule Matches
+const ruleMatches = document.getElementById('ruleMatches');
+const ruleMatchList = document.getElementById('ruleMatchList');
 
 const btnNew         = document.getElementById('btnNew');
 const btnSearch      = document.getElementById('btnSearch');
@@ -300,6 +415,10 @@ function openSettings() {
   settingSortOrder.value = settings.defaultSort;
   settingShowActions.checked = settings.showActionsAlways;
   settingReminders.checked = settings.remindersEnabled;
+  settingSmartRules.checked = settings.smartRulesEnabled;
+  settingRulesTrigger.value = settings.rulesTrigger;
+  settingRulesPriority.value = settings.rulesPriority;
+  settingReminderAction.value = settings.reminderAction;
 
   // Set active theme option
   const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
@@ -324,6 +443,10 @@ btnSaveSettings.addEventListener('click', () => {
   settings.defaultSort = settingSortOrder.value;
   settings.showActionsAlways = settingShowActions.checked;
   settings.remindersEnabled = settingReminders.checked;
+  settings.smartRulesEnabled = settingSmartRules.checked;
+  settings.rulesTrigger = settingRulesTrigger.value;
+  settings.rulesPriority = settingRulesPriority.value;
+  settings.reminderAction = settingReminderAction.value;
   saveSettings();
   sortMode = settings.defaultSort;
   applySettings();
@@ -449,6 +572,158 @@ btnRandomColor.addEventListener('click', () => {
   selectedColor = null; // null means random
 });
 
+// ── SMART RULES UI ───────────────────────────────
+btnEditRules.addEventListener('click', () => {
+  renderRulesList();
+  rulesOverlay.classList.remove('hidden');
+});
+
+btnCloseRules.addEventListener('click', () => {
+  rulesOverlay.classList.add('hidden');
+});
+
+rulesOverlay.addEventListener('click', e => {
+  if (e.target === rulesOverlay) rulesOverlay.classList.add('hidden');
+});
+
+function renderRulesList() {
+  rulesList.innerHTML = '';
+  if (settings.smartRules.length === 0) {
+    rulesList.innerHTML = '<div class="empty-state"><p>No rules yet. Click "Add New Rule" to create one!</p></div>';
+    return;
+  }
+
+  settings.smartRules.forEach((rule, index) => {
+    const item = document.createElement('div');
+    item.className = `rule-item ${rule.enabled ? '' : 'disabled'}`;
+    item.innerHTML = `
+      <div class="rule-item-header">
+        <span class="rule-item-name">${escapeHtml(rule.name)}</span>
+        <span class="rule-item-enabled">${rule.enabled ? 'ON' : 'OFF'}</span>
+      </div>
+      <div class="rule-item-pattern">Pattern: <code>${escapeHtml(rule.pattern)}</code></div>
+      <div class="rule-item-templates">
+        ${rule.titleTemplate ? `<span>Title: ${escapeHtml(rule.titleTemplate)}</span>` : ''}
+        ${rule.commentTemplate ? `<span>Comment: ${escapeHtml(rule.commentTemplate)}</span>` : ''}
+        ${rule.interval ? `<span>⏰ Every ${rule.interval}min</span>` : ''}
+        ${rule.color !== '' ? `<span>🎨 Color ${rule.color}</span>` : ''}
+      </div>
+    `;
+    item.addEventListener('click', () => openRuleEdit(index));
+    rulesList.appendChild(item);
+  });
+}
+
+btnAddRule.addEventListener('click', () => {
+  openRuleEdit(-1); // -1 = new rule
+});
+
+function openRuleEdit(index) {
+  editingRuleIndex = index;
+  if (index >= 0) {
+    // Edit existing rule
+    const rule = settings.smartRules[index];
+    ruleEditTitle.textContent = 'Edit Rule';
+    ruleName.value = rule.name;
+    rulePattern.value = rule.pattern;
+    ruleTitle.value = rule.titleTemplate || '';
+    ruleComment.value = rule.commentTemplate || '';
+    ruleInterval.value = rule.interval || '';
+    ruleEnabled.checked = rule.enabled;
+    btnDeleteRule.style.display = '';
+  } else {
+    // New rule
+    ruleEditTitle.textContent = 'New Rule';
+    ruleName.value = '';
+    rulePattern.value = '';
+    ruleTitle.value = '';
+    ruleComment.value = '';
+    ruleInterval.value = '';
+    ruleEnabled.checked = true;
+    btnDeleteRule.style.display = 'none';
+  }
+
+  // Set color button state
+  const currentColor = index >= 0 ? settings.smartRules[index].color : '';
+  ruleColors.querySelectorAll('.rule-color-btn').forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.dataset.color === String(currentColor)) {
+      btn.classList.add('active');
+    }
+  });
+
+  ruleEditOverlay.classList.remove('hidden');
+}
+
+btnCloseRuleEdit.addEventListener('click', () => {
+  ruleEditOverlay.classList.add('hidden');
+});
+
+ruleEditOverlay.addEventListener('click', e => {
+  if (e.target === ruleEditOverlay) ruleEditOverlay.classList.add('hidden');
+});
+
+// Color buttons in rule edit
+ruleColors.querySelectorAll('.rule-color-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    ruleColors.querySelectorAll('.rule-color-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+btnSaveRule.addEventListener('click', () => {
+  const activeColorBtn = ruleColors.querySelector('.rule-color-btn.active');
+  const color = activeColorBtn ? activeColorBtn.dataset.color : '';
+
+  const rule = {
+    name: ruleName.value.trim() || 'Untitled Rule',
+    pattern: rulePattern.value.trim(),
+    titleTemplate: ruleTitle.value.trim(),
+    commentTemplate: ruleComment.value.trim(),
+    interval: ruleInterval.value ? parseInt(ruleInterval.value) : null,
+    color: color,
+    enabled: ruleEnabled.checked
+  };
+
+  // Validate regex
+  if (!rule.pattern) {
+    showToast('⚠️ Please enter a pattern!');
+    return;
+  }
+  try {
+    new RegExp(rule.pattern);
+  } catch {
+    showToast('⚠️ Invalid regex pattern!');
+    return;
+  }
+
+  if (editingRuleIndex >= 0) {
+    settings.smartRules[editingRuleIndex] = rule;
+  } else {
+    settings.smartRules.push(rule);
+  }
+
+  renderRulesList();
+  ruleEditOverlay.classList.add('hidden');
+  showToast('📜 Rule saved!');
+});
+
+btnDeleteRule.addEventListener('click', () => {
+  if (confirm('Delete this rule?')) {
+    settings.smartRules.splice(editingRuleIndex, 1);
+    renderRulesList();
+    ruleEditOverlay.classList.add('hidden');
+    showToast('🗑 Rule deleted');
+  }
+});
+
+btnSaveRules.addEventListener('click', () => {
+  settings.smartRules = [...settings.smartRules];
+  saveSettings();
+  rulesOverlay.classList.add('hidden');
+  showToast('📜 Rules saved!');
+});
+
 // ── REMINDER TOGGLE ───────────────────────────────
 reminderToggle.addEventListener('change', () => {
   reminderDate.disabled = !reminderToggle.checked;
@@ -572,6 +847,9 @@ function resetForm() {
   reminderToggle.checked = false;
   reminderDate.value = '';
   reminderDate.disabled = true;
+
+  // Hide rule matches
+  ruleMatches.classList.add('hidden');
 }
 
 noteBody.addEventListener('input', () => {
@@ -588,6 +866,13 @@ noteBody.addEventListener('input', () => {
   // Update markdown preview if visible
   if (!markdownPreview.classList.contains('hidden')) {
     markdownPreview.innerHTML = parseMarkdown(noteBody.value);
+  }
+  // Check for smart rule matches
+  if (settings.smartRulesEnabled && settings.rulesTrigger === 'typing') {
+    const matches = findMatchingRules(noteBody.value);
+    showRuleMatches(matches);
+  } else {
+    ruleMatches.classList.add('hidden');
   }
 });
 
@@ -624,12 +909,27 @@ function saveNote() {
   const body = noteBody.value.trim();
   if (!body) { noteBody.focus(); shakeEl(noteBody); return; }
 
+  // Auto-apply rules if enabled and in autosave mode
+  if (settings.smartRulesEnabled && settings.rulesTrigger === 'autosave' && !editingId) {
+    const matches = findMatchingRules(body);
+    if (matches.length > 0) {
+      // Apply first match or all matches based on priority
+      if (settings.rulesPriority === 'first') {
+        applyRule(matches[0]);
+      } else {
+        matches.forEach(m => applyRule(m));
+      }
+    }
+  }
+
   const title   = noteTitle.value.trim();
   const comment = noteComment.value.trim();
   const tags    = extractTags(body);
 
   // Handle reminder
   let reminder = null;
+  let recurringInterval = null; // in minutes for recurring reminders
+
   if (settings.remindersEnabled && reminderToggle.checked && reminderDate.value) {
     reminder = new Date(reminderDate.value).getTime();
     // Only set if it's in the future
@@ -654,12 +954,21 @@ function saveNote() {
         title, body, comment, tags,
         color: selectedColor !== null ? selectedColor : existing.color,
         reminder,
+        // Keep existing recurring interval unless manually changed
+        recurringInterval: existing.recurringInterval,
         updatedAt: Date.now()
       };
 
       // Set new alarm
       if (reminder) {
-        chrome.alarms.create(`reminder_${editingId}`, { when: reminder });
+        if (notes[idx].recurringInterval) {
+          chrome.alarms.create(`reminder_${editingId}`, {
+            when: reminder,
+            periodInMinutes: notes[idx].recurringInterval
+          });
+        } else {
+          chrome.alarms.create(`reminder_${editingId}`, { when: reminder });
+        }
       }
     }
     showToast('✏️ Note updated!');
@@ -670,14 +979,34 @@ function saveNote() {
       pinned: false,
       favorite: false,
       reminder,
+      recurringInterval: null, // Will be set if applicable
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
+
+    // Check if this note has a recurring reminder from a rule
+    if (settings.smartRulesEnabled && settings.rulesTrigger === 'autosave') {
+      const matches = findMatchingRules(body);
+      if (matches.length > 0) {
+        const match = settings.rulesPriority === 'first' ? matches[0] : matches[0];
+        if (match.rule.interval) {
+          newNote.recurringInterval = parseInt(match.rule.interval);
+        }
+      }
+    }
+
     notes.unshift(newNote);
 
-    // Set alarm for new note
+    // Set alarm for new note (use periodInMinutes for recurring)
     if (reminder) {
-      chrome.alarms.create(`reminder_${newNote.id}`, { when: reminder });
+      if (newNote.recurringInterval) {
+        chrome.alarms.create(`reminder_${newNote.id}`, {
+          when: reminder,
+          periodInMinutes: newNote.recurringInterval
+        });
+      } else {
+        chrome.alarms.create(`reminder_${newNote.id}`, { when: reminder });
+      }
     }
 
     showToast('✅ Note saved!');
