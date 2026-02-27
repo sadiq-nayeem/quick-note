@@ -14,6 +14,12 @@ let selectedColor = null;   // manually selected color
 let pendingDelete = null;   // for undo delete
 let undoTimer = null;       // undo timeout timer
 
+// Settings
+let settings = {
+  defaultSort: 'newest',
+  showActionsAlways: false
+};
+
 const COLORS = 7; // 0..6 — matches CSS .nc-0 … .nc-6
 const MAX_BODY = 5000; // character limit for warning
 
@@ -172,12 +178,22 @@ function matchesSearch(note, query, mode) {
 // ── STORAGE ────────────────────────────────────
 function loadNotes() {
   return new Promise(resolve => {
-    chrome.storage.local.get(['qn_notes', 'qn_theme'], data => {
+    chrome.storage.local.get(['qn_notes', 'qn_theme', 'qn_settings'], data => {
       notes = data.qn_notes || [];
+
+      // Load theme
       if (data.qn_theme === 'dark') {
         document.documentElement.setAttribute('data-theme', 'dark');
         themeBtn.textContent = '☀';
       }
+
+      // Load settings
+      if (data.qn_settings) {
+        settings = { ...settings, ...data.qn_settings };
+        sortMode = settings.defaultSort;
+        applySettings();
+      }
+
       resolve();
     });
   });
@@ -188,12 +204,107 @@ function saveNotes() {
   updateNoteCount();
 }
 
+function saveSettings() {
+  chrome.storage.local.set({ qn_settings: settings });
+}
+
+function applySettings() {
+  // Apply show actions setting
+  const actionBtns = document.querySelectorAll('.note-actions');
+  actionBtns.forEach(btn => {
+    if (settings.showActionsAlways) {
+      btn.classList.add('show-always');
+    } else {
+      btn.classList.remove('show-always');
+    }
+  });
+}
+
+// ── SETTINGS MODAL ───────────────────────────────
+function openSettings() {
+  settingSortOrder.value = settings.defaultSort;
+  settingShowActions.checked = settings.showActionsAlways;
+  settingsOverlay.classList.remove('hidden');
+}
+
+function closeSettings() {
+  settingsOverlay.classList.add('hidden');
+}
+
+settingsBtn.addEventListener('click', openSettings);
+btnCloseSettings.addEventListener('click', closeSettings);
+settingsOverlay.addEventListener('click', e => {
+  if (e.target === settingsOverlay) closeSettings();
+});
+
+btnSaveSettings.addEventListener('click', () => {
+  settings.defaultSort = settingSortOrder.value;
+  settings.showActionsAlways = settingShowActions.checked;
+  saveSettings();
+  sortMode = settings.defaultSort;
+  applySettings();
+  if (currentView === 'list') renderAllNotes();
+  closeSettings();
+  showToast('⚙ Settings saved!');
+});
+
+// Theme buttons in settings
+themeOptions.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const theme = btn.dataset.theme;
+    themeOptions.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (theme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      themeBtn.textContent = '☀';
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      themeBtn.textContent = '🌙';
+    }
+    chrome.storage.local.set({ qn_theme: theme });
+  });
+});
+
+// Clear all notes
+btnClearAll.addEventListener('click', () => {
+  if (confirm('Are you sure you want to delete ALL notes? This cannot be undone!')) {
+    notes = [];
+    saveNotes();
+    if (currentView === 'list') { renderAllNotes(); renderTagSidebar(); }
+    closeSettings();
+    showToast('🗑 All notes cleared');
+  }
+});
+
+// ── MARKDOWN HELP ───────────────────────────────
+btnMarkdownHelp.addEventListener('click', e => {
+  e.stopPropagation();
+  markdownHelpTooltip.classList.toggle('hidden');
+});
+
+// Close help when clicking elsewhere
+document.addEventListener('click', () => {
+  markdownHelpTooltip.classList.add('hidden');
+});
+
 // ── DOM REFS ────────────────────────────────────
 const themeBtn       = document.getElementById('themeBtn');
+const settingsBtn    = document.getElementById('settingsBtn');
 const importBtn      = document.getElementById('importBtn');
 const exportBtn      = document.getElementById('exportBtn');
 const importInput    = document.getElementById('importInput');
 const noteCountEl    = document.getElementById('noteCount');
+
+const btnMarkdownHelp = document.getElementById('btnMarkdownHelp');
+const markdownHelpTooltip = document.getElementById('markdownHelpTooltip');
+
+const settingsOverlay = document.getElementById('settingsOverlay');
+const btnCloseSettings = document.getElementById('btnCloseSettings');
+const settingSortOrder = document.getElementById('settingSortOrder');
+const settingShowActions = document.getElementById('settingShowActions');
+const btnSaveSettings = document.getElementById('btnSaveSettings');
+const btnClearAll = document.getElementById('btnClearAll');
+const themeOptions = document.querySelectorAll('.theme-option');
 
 const btnNew         = document.getElementById('btnNew');
 const btnSearch      = document.getElementById('btnSearch');

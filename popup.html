@@ -18,6 +18,7 @@
       <span class="note-count" id="noteCount">0 notes</span>
     </div>
     <div class="header-right">
+      <button class="icon-btn" id="settingsBtn" title="Settings">⚙</button>
       <button class="icon-btn" id="importBtn" title="Import notes">⬆</button>
       <button class="icon-btn" id="exportBtn" title="Export notes">⬇</button>
       <button class="icon-btn" id="themeBtn" title="Toggle dark mode">🌙</button>
@@ -57,6 +58,7 @@
     <div class="form-group">
       <div class="markdown-toolbar">
         <span class="markdown-label">Markdown:</span>
+        <button class="markdown-help" id="btnMarkdownHelp" type="button" title="Markdown syntax help">?</button>
         <button class="markdown-toggle" id="btnMarkdownToggle" type="button">Preview 👁</button>
       </div>
       <textarea id="noteBody" class="textarea" placeholder="Your note…" rows="5" maxlength="5000"></textarea>
@@ -128,6 +130,64 @@
 
   <!-- ── HIDDEN FILE INPUT FOR IMPORT ── -->
   <input type="file" id="importInput" style="display: none;" accept=".json" />
+
+  <!-- ── MARKDOWN HELP TOOLTIP ── -->
+  <div class="markdown-help-tooltip hidden" id="markdownHelpTooltip">
+    <div class="mhelp-content">
+      <strong>Markdown Syntax:</strong><br>
+      <code># Heading 1</code> → Large header<br>
+      <code>## Heading 2</code> → Medium header<br>
+      <code>**bold**</code> → <strong>bold</strong><br>
+      <code>*italic*</code> → <em>italic</em><br>
+      <code>- item</code> → Bullet list<br>
+      <code>1. item</code> → Numbered list<br>
+      <code>- [ ]</code> → Checkbox<br>
+      <code>`code`</code> → Inline code<br>
+      <code>---</code> → Horizontal line<br>
+      <code>> quote</code> → Blockquote<br>
+      <code>[text](url)</code> → Link
+    </div>
+  </div>
+
+  <!-- ── SETTINGS MODAL ── -->
+  <div class="settings-overlay hidden" id="settingsOverlay">
+    <div class="settings-modal">
+      <div class="settings-header">
+        <h2>⚙ Settings</h2>
+        <button class="settings-close" id="btnCloseSettings">✕</button>
+      </div>
+      <div class="settings-body">
+        <div class="setting-group">
+          <label class="setting-label">Default Sort Order</label>
+          <select class="setting-select" id="settingSortOrder">
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="az">A → Z</option>
+            <option value="color">By Color</option>
+          </select>
+        </div>
+        <div class="setting-group">
+          <label class="setting-label">Always Show Action Buttons</label>
+          <input type="checkbox" class="setting-checkbox" id="settingShowActions">
+          <span class="setting-hint">Uncheck to show only on hover</span>
+        </div>
+        <div class="setting-group">
+          <label class="setting-label">Theme</label>
+          <div class="setting-theme">
+            <button class="theme-option" data-theme="light">☀️ Light</button>
+            <button class="theme-option" data-theme="dark">🌙 Dark</button>
+          </div>
+        </div>
+        <div class="setting-group danger-zone">
+          <label class="setting-label">Danger Zone</label>
+          <button class="btn-danger" id="btnClearAll">🗑 Clear All Notes</button>
+        </div>
+      </div>
+      <div class="settings-footer">
+        <button class="btn-primary" id="btnSaveSettings">Save Settings</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ── DELETE CONFIRM DIALOG ── -->
   <div class="overlay hidden" id="overlay">
