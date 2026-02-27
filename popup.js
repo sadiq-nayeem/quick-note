@@ -175,6 +175,76 @@ function matchesSearch(note, query, mode) {
   } catch { return false; }
 }
 
+// ── DOM REFS ────────────────────────────────────
+const themeBtn       = document.getElementById('themeBtn');
+const settingsBtn    = document.getElementById('settingsBtn');
+const importBtn      = document.getElementById('importBtn');
+const exportBtn      = document.getElementById('exportBtn');
+const importInput    = document.getElementById('importInput');
+const noteCountEl    = document.getElementById('noteCount');
+
+const btnMarkdownHelp = document.getElementById('btnMarkdownHelp');
+const markdownHelpTooltip = document.getElementById('markdownHelpTooltip');
+
+const settingsOverlay = document.getElementById('settingsOverlay');
+const btnCloseSettings = document.getElementById('btnCloseSettings');
+const settingSortOrder = document.getElementById('settingSortOrder');
+const settingShowActions = document.getElementById('settingShowActions');
+const btnSaveSettings = document.getElementById('btnSaveSettings');
+const btnClearAll = document.getElementById('btnClearAll');
+const themeOptions = document.querySelectorAll('.theme-option');
+
+const btnNew         = document.getElementById('btnNew');
+const btnSearch      = document.getElementById('btnSearch');
+const btnList        = document.getElementById('btnList');
+
+const viewNew        = document.getElementById('viewNew');
+const viewSearch     = document.getElementById('viewSearch');
+const viewList       = document.getElementById('viewList');
+const sortBar        = document.getElementById('sortBar');
+const sortBtns       = document.querySelectorAll('.sort-btn');
+const tagSidebar     = document.getElementById('tagSidebar');
+const tagList        = document.getElementById('tagList');
+
+const noteTitle      = document.getElementById('noteTitle');
+const noteBody       = document.getElementById('noteBody');
+const noteComment    = document.getElementById('noteComment');
+const charCount      = document.getElementById('charCount');
+const btnSave        = document.getElementById('btnSave');
+const btnCancelEdit  = document.getElementById('btnCancelEdit');
+
+const btnMarkdownToggle = document.getElementById('btnMarkdownToggle');
+const markdownPreview = document.getElementById('markdownPreview');
+
+const searchInput    = document.getElementById('searchInput');
+const modeBtns       = document.querySelectorAll('.mode-btn');
+const searchResults  = document.getElementById('searchResults');
+const searchError    = document.getElementById('searchError');
+
+const allNotes       = document.getElementById('allNotes');
+const emptyState     = document.getElementById('emptyState');
+
+const toast          = document.getElementById('toast');
+
+const overlay        = document.getElementById('overlay');
+const btnCancelDelete = document.getElementById('btnCancelDelete');
+const btnConfirmDelete = document.getElementById('btnConfirmDelete');
+
+const viewModalOverlay = document.getElementById('viewModalOverlay');
+const viewModalTitle = document.getElementById('viewModalTitle');
+const viewModalMeta = document.getElementById('viewModalMeta');
+const viewModalBody = document.getElementById('viewModalBody');
+const btnCloseViewModal = document.getElementById('btnCloseViewModal');
+const btnViewModalClose = document.getElementById('btnViewModalClose');
+const btnViewModalEdit = document.getElementById('btnViewModalEdit');
+let currentViewNoteId = null;
+
+const templateBtns   = document.querySelectorAll('.template-btn');
+const colorBtns      = document.querySelectorAll('.color-btn');
+const btnRandomColor = document.getElementById('btnRandomColor');
+const toastMsg       = document.getElementById('toastMsg');
+const toastUndo      = document.getElementById('toastUndo');
+
 // ── STORAGE ────────────────────────────────────
 function loadNotes() {
   return new Promise(resolve => {
@@ -293,76 +363,6 @@ btnMarkdownHelp.addEventListener('click', e => {
 document.addEventListener('click', () => {
   markdownHelpTooltip.classList.add('hidden');
 });
-
-// ── DOM REFS ────────────────────────────────────
-const themeBtn       = document.getElementById('themeBtn');
-const settingsBtn    = document.getElementById('settingsBtn');
-const importBtn      = document.getElementById('importBtn');
-const exportBtn      = document.getElementById('exportBtn');
-const importInput    = document.getElementById('importInput');
-const noteCountEl    = document.getElementById('noteCount');
-
-const btnMarkdownHelp = document.getElementById('btnMarkdownHelp');
-const markdownHelpTooltip = document.getElementById('markdownHelpTooltip');
-
-const settingsOverlay = document.getElementById('settingsOverlay');
-const btnCloseSettings = document.getElementById('btnCloseSettings');
-const settingSortOrder = document.getElementById('settingSortOrder');
-const settingShowActions = document.getElementById('settingShowActions');
-const btnSaveSettings = document.getElementById('btnSaveSettings');
-const btnClearAll = document.getElementById('btnClearAll');
-const themeOptions = document.querySelectorAll('.theme-option');
-
-const btnNew         = document.getElementById('btnNew');
-const btnSearch      = document.getElementById('btnSearch');
-const btnList        = document.getElementById('btnList');
-
-const viewNew        = document.getElementById('viewNew');
-const viewSearch     = document.getElementById('viewSearch');
-const viewList       = document.getElementById('viewList');
-const sortBar        = document.getElementById('sortBar');
-const sortBtns       = document.querySelectorAll('.sort-btn');
-const tagSidebar     = document.getElementById('tagSidebar');
-const tagList        = document.getElementById('tagList');
-
-const noteTitle      = document.getElementById('noteTitle');
-const noteBody       = document.getElementById('noteBody');
-const noteComment    = document.getElementById('noteComment');
-const charCount      = document.getElementById('charCount');
-const btnSave        = document.getElementById('btnSave');
-const btnCancelEdit  = document.getElementById('btnCancelEdit');
-
-const btnMarkdownToggle = document.getElementById('btnMarkdownToggle');
-const markdownPreview = document.getElementById('markdownPreview');
-
-const searchInput    = document.getElementById('searchInput');
-const modeBtns       = document.querySelectorAll('.mode-btn');
-const searchResults  = document.getElementById('searchResults');
-const searchError    = document.getElementById('searchError');
-
-const allNotes       = document.getElementById('allNotes');
-const emptyState     = document.getElementById('emptyState');
-
-const toast          = document.getElementById('toast');
-
-const overlay        = document.getElementById('overlay');
-const btnCancelDelete = document.getElementById('btnCancelDelete');
-const btnConfirmDelete = document.getElementById('btnConfirmDelete');
-
-const viewModalOverlay = document.getElementById('viewModalOverlay');
-const viewModalTitle = document.getElementById('viewModalTitle');
-const viewModalMeta = document.getElementById('viewModalMeta');
-const viewModalBody = document.getElementById('viewModalBody');
-const btnCloseViewModal = document.getElementById('btnCloseViewModal');
-const btnViewModalClose = document.getElementById('btnViewModalClose');
-const btnViewModalEdit = document.getElementById('btnViewModalEdit');
-let currentViewNoteId = null;
-
-const templateBtns   = document.querySelectorAll('.template-btn');
-const colorBtns      = document.querySelectorAll('.color-btn');
-const btnRandomColor = document.getElementById('btnRandomColor');
-const toastMsg       = document.getElementById('toastMsg');
-const toastUndo      = document.getElementById('toastUndo');
 
 // ── THEME ───────────────────────────────────────
 themeBtn.addEventListener('click', () => {
