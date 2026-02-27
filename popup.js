@@ -877,9 +877,10 @@ viewModalOverlay.addEventListener('click', e => {
 });
 
 btnViewModalEdit.addEventListener('click', () => {
-  if (currentViewNoteId) {
-    closeViewModal();
-    handleCardAction('edit', currentViewNoteId);
+  const noteId = currentViewNoteId;
+  closeViewModal();
+  if (noteId) {
+    handleCardAction('edit', noteId);
   }
 });
 
