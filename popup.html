@@ -140,6 +140,22 @@
     </div>
   </div>
 
+  <!-- ── VIEW NOTE MODAL ── -->
+  <div class="view-modal-overlay hidden" id="viewModalOverlay">
+    <div class="view-modal">
+      <div class="view-modal-header">
+        <h2 class="view-modal-title" id="viewModalTitle">Note Title</h2>
+        <button class="view-modal-close" id="btnCloseViewModal">✕</button>
+      </div>
+      <div class="view-modal-meta" id="viewModalMeta"></div>
+      <div class="view-modal-body" id="viewModalBody"></div>
+      <div class="view-modal-footer">
+        <button class="btn-secondary" id="btnViewModalEdit">✏️ Edit</button>
+        <button class="btn-primary" id="btnViewModalClose">Close</button>
+      </div>
+    </div>
+  </div>
+
   <script src="popup.js"></script>
 </body>
 </html>

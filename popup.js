@@ -231,6 +231,15 @@ const overlay        = document.getElementById('overlay');
 const btnCancelDelete = document.getElementById('btnCancelDelete');
 const btnConfirmDelete = document.getElementById('btnConfirmDelete');
 
+const viewModalOverlay = document.getElementById('viewModalOverlay');
+const viewModalTitle = document.getElementById('viewModalTitle');
+const viewModalMeta = document.getElementById('viewModalMeta');
+const viewModalBody = document.getElementById('viewModalBody');
+const btnCloseViewModal = document.getElementById('btnCloseViewModal');
+const btnViewModalClose = document.getElementById('btnViewModalClose');
+const btnViewModalEdit = document.getElementById('btnViewModalEdit');
+let currentViewNoteId = null;
+
 const templateBtns   = document.querySelectorAll('.template-btn');
 const colorBtns      = document.querySelectorAll('.color-btn');
 const btnRandomColor = document.getElementById('btnRandomColor');
@@ -587,8 +596,13 @@ function buildCard(note, query = '', mode = 'normal') {
 
   card.addEventListener('click', e => {
     const btn = e.target.closest('[data-action]');
-    if (!btn) return;
-    handleCardAction(btn.dataset.action, note.id);
+    if (btn) {
+      e.stopPropagation();
+      handleCardAction(btn.dataset.action, note.id);
+      return;
+    }
+    // Clicking anywhere else on the card opens the view modal
+    openViewModal(note.id);
   });
 
   // Drag and drop for pinned notes
@@ -809,6 +823,65 @@ function reorderPinnedNotes(draggedId, targetId) {
   saveNotes();
   renderAllNotes();
 }
+
+// ── VIEW NOTE MODAL ───────────────────────────────
+function openViewModal(noteId) {
+  const note = notes.find(n => n.id === noteId);
+  if (!note) return;
+
+  currentViewNoteId = noteId;
+  viewModalTitle.textContent = note.title || '(Untitled)';
+  viewModalMeta.innerHTML = '';
+
+  // Add badges
+  if (note.pinned) viewModalMeta.innerHTML += '<span class="view-modal-meta-tag">📌 Pinned</span>';
+  if (note.favorite) viewModalMeta.innerHTML += '<span class="view-modal-meta-tag">⭐ Favorite</span>';
+
+  // Add date
+  const dateStr = fullDate(note.updatedAt || note.createdAt);
+  viewModalMeta.innerHTML += `<span class="view-modal-meta-tag">📅 ${dateStr}</span>`;
+
+  // Add tags
+  if (note.tags && note.tags.length) {
+    note.tags.forEach(t => {
+      viewModalMeta.innerHTML += `<span class="view-modal-meta-tag">${escapeHtml(t)}</span>`;
+    });
+  }
+
+  // Add comment if exists
+  if (note.comment) {
+    viewModalMeta.innerHTML += `<span class="view-modal-meta-tag">💬 ${escapeHtml(note.comment)}</span>`;
+  }
+
+  // Render body with markdown
+  if (note.body) {
+    viewModalBody.innerHTML = parseMarkdown(note.body);
+    viewModalBody.classList.remove('empty');
+  } else {
+    viewModalBody.innerHTML = '(No content)';
+    viewModalBody.classList.add('empty');
+  }
+
+  viewModalOverlay.classList.remove('hidden');
+}
+
+function closeViewModal() {
+  viewModalOverlay.classList.add('hidden');
+  currentViewNoteId = null;
+}
+
+btnCloseViewModal.addEventListener('click', closeViewModal);
+btnViewModalClose.addEventListener('click', closeViewModal);
+viewModalOverlay.addEventListener('click', e => {
+  if (e.target === viewModalOverlay) closeViewModal();
+});
+
+btnViewModalEdit.addEventListener('click', () => {
+  if (currentViewNoteId) {
+    closeViewModal();
+    handleCardAction('edit', currentViewNoteId);
+  }
+});
 
 // ── DELETE DIALOG (kept for reference, no longer used) ──
 btnCancelDelete.addEventListener('click', () => {
