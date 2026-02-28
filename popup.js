@@ -28,8 +28,11 @@ let settings = {
   contextMenuEnabled: false,  // Enable context menu
   contextMenuBehavior: 'show',  // 'show' | 'background' - how to handle captured text
   globalShortcutEnabled: true, // Enable global shortcut
-  noteLinkingEnabled: true    // Enable cross-note references
+  noteLinkingEnabled: true,   // Enable cross-note references
+  tabPinEnabled: true         // Enable pin notes to sites
 };
+
+let currentTabHost = '';  // hostname of the active browser tab
 
 // Rule being edited
 let editingRuleIndex = -1;
@@ -338,6 +341,7 @@ const themeOptions = document.querySelectorAll('.theme-option');
 // Settings Tabs UI
 const settingsTabBtns = document.querySelectorAll('.settings-tab-btn');
 const settingsTabContents = document.querySelectorAll('.settings-tab-content');
+const settingTabPin = document.getElementById('settingTabPin');
 
 // Smart Rules UI
 const btnEditRules = document.getElementById('btnEditRules');
@@ -489,6 +493,7 @@ function openSettings() {
   settingContextMenuBehavior.value = settings.contextMenuBehavior || 'show';
   settingGlobalShortcut.checked = settings.globalShortcutEnabled;
   settingNoteLinking.checked = settings.noteLinkingEnabled;
+  settingTabPin.checked = settings.tabPinEnabled;
 
   // Set active theme option
   const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
@@ -540,6 +545,7 @@ btnSaveSettings.addEventListener('click', () => {
   settings.contextMenuBehavior = settingContextMenuBehavior.value;
   settings.globalShortcutEnabled = settingGlobalShortcut.checked;
   settings.noteLinkingEnabled = settingNoteLinking.checked;
+  settings.tabPinEnabled = settingTabPin.checked;
   saveSettings();
   sortMode = settings.defaultSort;
   applySettings();
@@ -1142,6 +1148,14 @@ function sortedNotes(list) {
     if (a.pinned && !b.pinned) return -1;
     if (!a.pinned && b.pinned) return 1;
 
+    // Site-pinned notes for current tab float next
+    if (settings.tabPinEnabled && currentTabHost) {
+      const aMatch = a.pinnedUrl === currentTabHost;
+      const bMatch = b.pinnedUrl === currentTabHost;
+      if (aMatch && !bMatch) return -1;
+      if (!aMatch && bMatch) return 1;
+    }
+
     // Then apply selected sort mode
     switch (sortMode) {
       case 'oldest':
@@ -1177,6 +1191,8 @@ function buildCard(note, query = '', mode = 'normal') {
   const pinBadge = note.pinned ? `<span class="note-pin-badge">📌</span>` : '';
   const favBadge = note.favorite ? `<span class="note-fav-badge">⭐</span>` : '';
   const remBadge = note.reminder ? `<span class="note-rem-badge">🔔</span>` : '';
+  const siteBadge = note.pinnedUrl ? `<span class="note-site-badge" title="Pinned to ${escapeHtml(note.pinnedUrl)}">🔗</span>` : '';
+  const isSiteMatch = settings.tabPinEnabled && note.pinnedUrl && note.pinnedUrl === currentTabHost;
   const tagsHtml = note.tags && note.tags.length
     ? `<div class="note-tags">${note.tags.map(t => `<span class="note-tag">${escapeHtml(t)}</span>`).join('')}</div>`
     : '';
@@ -1184,10 +1200,18 @@ function buildCard(note, query = '', mode = 'normal') {
   const ts = note.updatedAt || note.createdAt;
   const timeHtml = `<span class="note-time" title="${fullDate(ts)}">${timeAgo(ts)}</span>`;
 
+  if (isSiteMatch) card.classList.add('site-pinned');
+
+  const sitePinBtn = settings.tabPinEnabled && currentTabHost
+    ? `<button class="note-action-btn" data-action="sitepin" title="${note.pinnedUrl === currentTabHost ? 'Unpin from this site' : 'Pin to this site'}">${note.pinnedUrl === currentTabHost ? '🔗' : '🔗'}</button>`
+    : '';
+
   card.innerHTML = `
     ${pinBadge}
     ${favBadge}
     ${remBadge}
+    ${siteBadge}
+    ${isSiteMatch ? `<div class="site-pinned-banner">🔗 Pinned to ${escapeHtml(note.pinnedUrl)}</div>` : ''}
     ${titleHtml}
     ${bodyHtml}
     ${commentHtml}
@@ -1197,6 +1221,7 @@ function buildCard(note, query = '', mode = 'normal') {
       <div class="note-actions">
         <button class="note-action-btn" data-action="pin"  title="${note.pinned ? 'Unpin' : 'Pin'}">${note.pinned ? '📌' : '📍'}</button>
         <button class="note-action-btn" data-action="favorite" title="${note.favorite ? 'Unfavorite' : 'Favorite'}">${note.favorite ? '⭐' : '☆'}</button>
+        ${sitePinBtn}
         <button class="note-action-btn" data-action="duplicate" title="Duplicate">📄</button>
         <button class="note-action-btn" data-action="copy" title="Copy body">📋</button>
         <button class="note-action-btn" data-action="edit" title="Edit">✏️</button>
@@ -1356,6 +1381,19 @@ function handleCardAction(action, id) {
     if (currentView === 'list') renderAllNotes();
     if (currentView === 'search') renderSearch();
     showToast(note.favorite ? '⭐ Favorited!' : '☆ Unfavorited');
+  }
+
+  if (action === 'sitepin') {
+    if (note.pinnedUrl === currentTabHost) {
+      delete note.pinnedUrl;
+      showToast('🔗 Unpinned from site');
+    } else {
+      note.pinnedUrl = currentTabHost;
+      showToast(`🔗 Pinned to ${currentTabHost}`);
+    }
+    saveNotes();
+    if (currentView === 'list') renderAllNotes();
+    if (currentView === 'search') renderSearch();
   }
 
   if (action === 'copy') {
@@ -1622,8 +1660,25 @@ style.textContent = `
 document.head.appendChild(style);
 
 // ── INIT ─────────────────────────────────────────
-loadNotes().then(() => {
-  updateNoteCount();
-  showView('new');
-  noteBody.focus();
-});
+// Detect active tab hostname
+try {
+  chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+    if (tabs && tabs[0] && tabs[0].url) {
+      try {
+        currentTabHost = new URL(tabs[0].url).hostname;
+      } catch { /* ignore invalid URLs like chrome:// */ }
+    }
+    loadNotes().then(() => {
+      updateNoteCount();
+      showView('new');
+      noteBody.focus();
+    });
+  });
+} catch {
+  // Fallback if tabs API is unavailable
+  loadNotes().then(() => {
+    updateNoteCount();
+    showView('new');
+    noteBody.focus();
+  });
+}
