@@ -245,7 +245,7 @@
       <div class="rules-json-editor hidden" id="rulesJsonEditor">
         <div class="rules-json-hint">
           Each rule:
-          <code>{ "name", "pattern", "titleTemplate", "commentTemplate", "color", "interval", "enabled" }</code>
+          <code>{ name, pattern, titleTemplate, commentTemplate, color, interval, tags, folder, pinnedUrl, pinned, favorite, enabled }</code>
         </div>
         <textarea class="rules-json-textarea" id="rulesJsonTextarea" spellcheck="false" placeholder="[]"></textarea>
         <div class="rules-json-error hidden" id="rulesJsonError"></div>
@@ -324,6 +324,33 @@
             <button class="rule-color-btn c-5" data-color="5"></button>
             <button class="rule-color-btn c-6" data-color="6"></button>
           </div>
+        </div>
+        <div class="rule-edit-group">
+          <label>Auto-Tags (optional)</label>
+          <input type="text" class="input" id="ruleTags" placeholder="e.g., #work #urgent" maxlength="200">
+          <span class="rule-hint">Space-separated #tags to auto-add. Supports $1, $2 captures</span>
+        </div>
+        <div class="rule-edit-group">
+          <label>Folder (optional)</label>
+          <select class="input" id="ruleFolder">
+            <option value="">None</option>
+          </select>
+          <span class="rule-hint">Auto-assign note to this folder</span>
+        </div>
+        <div class="rule-edit-group">
+          <label>Pin to Site (optional)</label>
+          <input type="text" class="input" id="rulePinnedUrl" placeholder="e.g., github.com" maxlength="200">
+          <span class="rule-hint">Auto-pin note to this domain. Use $1 for captured domain</span>
+        </div>
+        <div class="rule-edit-group rule-edit-checkboxes">
+          <label>
+            <input type="checkbox" id="rulePinned">
+            📌 Pin to top
+          </label>
+          <label>
+            <input type="checkbox" id="ruleFavorite">
+            ⭐ Mark as favorite
+          </label>
         </div>
         <div class="rule-edit-group">
           <label>

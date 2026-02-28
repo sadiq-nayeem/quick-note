@@ -215,6 +215,18 @@ function applyRule(matchData) {
     const reminderTime = Date.now() + (parseInt(rule.interval) * 60 * 1000);
     reminderDate.value = new Date(reminderTime - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   }
+  // Handle folder
+  if (rule.folder) {
+    noteFolder.value = rule.folder;
+  }
+  // Handle tags — store on rule for saveNote to pick up
+  if (rule.tags) {
+    matchData._resolvedTags = applyTemplate(rule.tags, captures);
+  }
+  // Handle pinnedUrl — store on rule for saveNote to pick up
+  if (rule.pinnedUrl) {
+    matchData._resolvedPinnedUrl = applyTemplate(rule.pinnedUrl, captures);
+  }
 }
 
 function showRuleMatches(matches) {
@@ -418,6 +430,11 @@ const ruleComment = document.getElementById('ruleComment');
 const ruleInterval = document.getElementById('ruleInterval');
 const ruleColors = document.getElementById('ruleColors');
 const ruleEnabled = document.getElementById('ruleEnabled');
+const ruleTags = document.getElementById('ruleTags');
+const ruleFolder = document.getElementById('ruleFolder');
+const rulePinnedUrl = document.getElementById('rulePinnedUrl');
+const rulePinned = document.getElementById('rulePinned');
+const ruleFavorite = document.getElementById('ruleFavorite');
 const btnSaveRule = document.getElementById('btnSaveRule');
 const btnDeleteRule = document.getElementById('btnDeleteRule');
 
@@ -844,6 +861,11 @@ function renderRulesList() {
         ${rule.commentTemplate ? `<span>Comment: ${escapeHtml(rule.commentTemplate)}</span>` : ''}
         ${rule.interval ? `<span>⏰ Every ${rule.interval}min</span>` : ''}
         ${rule.color !== '' ? `<span>🎨 Color ${rule.color}</span>` : ''}
+        ${rule.tags ? `<span>🏷 ${escapeHtml(rule.tags)}</span>` : ''}
+        ${rule.folder ? `<span>📁 Folder</span>` : ''}
+        ${rule.pinnedUrl ? `<span>🔗 ${escapeHtml(rule.pinnedUrl)}</span>` : ''}
+        ${rule.pinned ? '<span>📌 Pinned</span>' : ''}
+        ${rule.favorite ? '<span>⭐ Favorite</span>' : ''}
       </div>
     `;
     item.addEventListener('click', () => openRuleEdit(index));
@@ -867,6 +889,10 @@ function openRuleEdit(index) {
     ruleComment.value = rule.commentTemplate || '';
     ruleInterval.value = rule.interval || '';
     ruleEnabled.checked = rule.enabled;
+    ruleTags.value = rule.tags || '';
+    rulePinnedUrl.value = rule.pinnedUrl || '';
+    rulePinned.checked = !!rule.pinned;
+    ruleFavorite.checked = !!rule.favorite;
     btnDeleteRule.style.display = '';
   } else {
     // New rule
@@ -877,7 +903,23 @@ function openRuleEdit(index) {
     ruleComment.value = '';
     ruleInterval.value = '';
     ruleEnabled.checked = true;
+    ruleTags.value = '';
+    rulePinnedUrl.value = '';
+    rulePinned.checked = false;
+    ruleFavorite.checked = false;
     btnDeleteRule.style.display = 'none';
+  }
+
+  // Populate ruleFolder select with current folders
+  ruleFolder.innerHTML = '<option value="">None</option>';
+  folders.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f.id;
+    opt.textContent = f.name;
+    ruleFolder.appendChild(opt);
+  });
+  if (index >= 0 && settings.smartRules[index].folder) {
+    ruleFolder.value = settings.smartRules[index].folder;
   }
 
   // Set color button state
@@ -919,6 +961,11 @@ btnSaveRule.addEventListener('click', () => {
     commentTemplate: ruleComment.value.trim(),
     interval: ruleInterval.value ? parseInt(ruleInterval.value) : null,
     color: color,
+    tags: ruleTags.value.trim(),
+    folder: ruleFolder.value || '',
+    pinnedUrl: rulePinnedUrl.value.trim(),
+    pinned: rulePinned.checked,
+    favorite: ruleFavorite.checked,
     enabled: ruleEnabled.checked
   };
 
@@ -1286,13 +1333,32 @@ function saveNote() {
       }
     }
 
-    // Check if this note has a recurring reminder from a rule
+    // Check if this note has rules applied
     if (settings.smartRulesEnabled && settings.rulesTrigger === 'autosave') {
       const matches = findMatchingRules(body);
       if (matches.length > 0) {
-        const match = settings.rulesPriority === 'first' ? matches[0] : matches[0];
-        if (match.rule.interval) {
-          newNote.recurringInterval = parseInt(match.rule.interval);
+        // apply to first match or all depending on priority
+        const applicableMatches = settings.rulesPriority === 'first' ? [matches[0]] : matches;
+
+        for (const match of applicableMatches) {
+          if (match.rule.interval) {
+            newNote.recurringInterval = parseInt(match.rule.interval);
+          }
+          if (match.rule.pinned) {
+            newNote.pinned = true;
+          }
+          if (match.rule.favorite) {
+            newNote.favorite = true;
+          }
+          if (match._resolvedTags) {
+            const ruleTags = extractTags(match._resolvedTags);
+            ruleTags.forEach(t => {
+              if (!newNote.tags.includes(t)) newNote.tags.push(t);
+            });
+          }
+          if (match._resolvedPinnedUrl && !newNote.pinnedUrl) {
+            newNote.pinnedUrl = match._resolvedPinnedUrl;
+          }
         }
       }
     }
