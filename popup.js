@@ -860,7 +860,12 @@ function showView(name) {
 
   if (name === 'list') { renderAllNotes(); renderTagSidebar(); }
   if (name === 'search') { searchInput.focus(); renderSearch(); }
-  if (name === 'new' && !editingId) resetForm();
+  if (name === 'new' && !editingId) {
+    // Don't reset if we have a pending note from context menu
+    chrome.storage.local.get(['_pendingNote'], data => {
+      if (!data._pendingNote) resetForm();
+    });
+  }
 }
 
 btnNew.addEventListener('click',    () => { editingId = null; showView('new'); });
