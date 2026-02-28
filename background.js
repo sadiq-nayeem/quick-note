@@ -46,7 +46,7 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 // ── CONTEXT MENU ────────────────────────────────
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  const data = await chrome.storage.local.get(['qn_settings']);
+  const data = await chrome.storage.local.get(['qn_settings', 'qn_notes']);
   if (data.qn_settings?.contextMenuEnabled) {
     const settings = data.qn_settings || {};
 
