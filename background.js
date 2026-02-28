@@ -138,6 +138,15 @@ chrome.commands.onCommand.addListener(async (command) => {
   }
 });
 
+// ── MESSAGE FROM CONTENT SCRIPT ─────────────────
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.action === 'openQuickNoteList') {
+    chrome.storage.local.set({ _openToList: true }, () => {
+      chrome.action.openPopup();
+    });
+  }
+});
+
 // ── ALARMS ──────────────────────────────────────
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name.startsWith('reminder_')) {

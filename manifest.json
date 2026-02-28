@@ -3,7 +3,14 @@
   "name": "QuickNote",
   "version": "1.0.0",
   "description": "Fast, beautiful, always-there note-taking. Type · Save · Go.",
-  "permissions": ["storage", "alarms", "notifications", "contextMenus", "activeTab", "tabs"],
+  "permissions": [
+    "storage",
+    "alarms",
+    "notifications",
+    "contextMenus",
+    "activeTab",
+    "tabs"
+  ],
   "background": {
     "service_worker": "background.js"
   },
@@ -30,5 +37,19 @@
       },
       "description": "Open QuickNote"
     }
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ]
 }

@@ -1670,8 +1670,16 @@ try {
     }
     loadNotes().then(() => {
       updateNoteCount();
-      showView('new');
-      noteBody.focus();
+      // Check if opened via site-pin button (content script)
+      chrome.storage.local.get('_openToList', data => {
+        if (data._openToList) {
+          chrome.storage.local.remove('_openToList');
+          showView('list');
+        } else {
+          showView('new');
+          noteBody.focus();
+        }
+      });
     });
   });
 } catch {
