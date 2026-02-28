@@ -3,12 +3,38 @@
    ───────────────────────────────────────────── */
 
 // ── INSTALL / UPDATE ────────────────────────────
-chrome.runtime.onInstalled.addListener(() => {
-  // Create context menu for quick note capture
-  chrome.contextMenus.create({
-    id: 'saveToQuickNote',
-    title: 'Save to QuickNote',
-    contexts: ['selection']
+chrome.runtime.onInstalled.addListener(async () => {
+  // Clear any old context menu and recreate based on settings
+  chrome.contextMenus.removeAll();
+
+  const data = await chrome.storage.local.get(['qn_settings']);
+  const settings = data.qn_settings || {};
+
+  if (settings.contextMenuEnabled) {
+    chrome.contextMenus.create({
+      id: 'saveToQuickNote',
+      title: 'Save to QuickNote',
+      contexts: ['selection']
+    });
+  }
+
+  // Listen for settings changes to update context menu
+  chrome.storage.onChanged.addListener(async (changes, area) => {
+    if (area === 'local' && changes.qn_settings) {
+      const newSettings = changes.qn_settings.newValue || {};
+      const oldSettings = changes.qn_settings.oldValue || {};
+
+      if (newSettings.contextMenuEnabled !== oldSettings.contextMenuEnabled) {
+        chrome.contextMenus.removeAll();
+        if (newSettings.contextMenuEnabled) {
+          chrome.contextMenus.create({
+            id: 'saveToQuickNote',
+            title: 'Save to QuickNote',
+            contexts: ['selection']
+          });
+        }
+      }
+    }
   });
 });
 
@@ -20,6 +46,45 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     chrome.storage.local.set({ '_pendingNote': info.selectionText });
     // Open popup
     chrome.action.openPopup();
+  }
+});
+
+// ── QUICK CAPTURE FROM CURRENT TAB ───────────────
+chrome.contextMenus.create({
+  id: 'quickCapture',
+  title: 'Quick Capture: Page Title & URL',
+  contexts: ['page']
+});
+
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (info.menuItemId === 'quickCapture') {
+    const data = await chrome.storage.local.get(['qn_settings', 'qn_notes']);
+    if (data.qn_settings?.contextMenuEnabled) {
+      const notes = data.qn_notes || [];
+      const newNote = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+        title: tab.title,
+        body: tab.url,
+        comment: 'Captured from: ' + new Date().toLocaleString(),
+        color: Math.floor(Math.random() * 7),
+        pinned: false,
+        favorite: false,
+        reminder: null,
+        recurringInterval: null,
+        references: [],
+        linkedNotes: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      notes.unshift(newNote);
+      await chrome.storage.local.set({ qn_notes: notes });
+      chrome.notifications.create({
+        type: 'basic',
+        iconUrl: 'icons/icon128.png',
+        title: '🗒 QuickNote',
+        message: 'Page captured as note!'
+      });
+    }
   }
 });
 
