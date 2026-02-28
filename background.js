@@ -178,8 +178,23 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 });
 
+// ── TRASH AUTO-PURGE (30 days) ──────────────────
+chrome.alarms.create('trashPurge', { periodInMinutes: 1440 }); // once daily
+
 // ── ALARMS ──────────────────────────────────────
 chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name === 'trashPurge') {
+    const data = await chrome.storage.local.get(['qn_trash', 'qn_settings']);
+    const settings = data.qn_settings || {};
+    if (!settings.trashEnabled) return;
+    const trash = data.qn_trash || [];
+    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const filtered = trash.filter(n => (n.deletedAt || 0) > cutoff);
+    if (filtered.length !== trash.length) {
+      await chrome.storage.local.set({ qn_trash: filtered });
+    }
+    return;
+  }
   if (alarm.name.startsWith('reminder_')) {
     const noteId = alarm.name.replace('reminder_', '');
 

@@ -2017,3 +2017,116 @@ mark {
   font-size: 9px;
   opacity: 0.8;
 }
+
+/* ── TRASH VIEW ── */
+.trash-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+}
+
+.trash-title {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 11px;
+  border-radius: 6px;
+}
+
+.trash-meta {
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-top: 6px;
+  opacity: 0.7;
+}
+
+.trash-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.trash-btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  transition: background .15s;
+}
+
+.trash-btn.restore {
+  background: var(--accent);
+  color: #fff;
+}
+
+.trash-btn.restore:hover {
+  filter: brightness(1.1);
+}
+
+.trash-btn.perma-del {
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.trash-btn.perma-del:hover {
+  background: #ff4d4f;
+  color: #fff;
+  border-color: #ff4d4f;
+}
+
+/* ── RICH TEXT TOOLBAR ── */
+.md-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px 8px 0 0;
+  border-bottom: none;
+  flex-wrap: wrap;
+}
+
+.md-toolbar.hidden {
+  display: none;
+}
+
+.md-btn {
+  min-width: 28px;
+  height: 26px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .12s, color .12s;
+  padding: 0 4px;
+}
+
+.md-btn:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.md-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+.md-toolbar+.textarea {
+  border-radius: 0 0 8px 8px;
+}

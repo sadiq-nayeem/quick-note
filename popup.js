@@ -4,6 +4,7 @@
 
 // ── STATE ──────────────────────────────────────
 let notes = [];
+let trash = [];
 let editingId = null;
 let deleteId = null;
 let searchMode = 'normal';  // 'normal' | 'strict' | 'regex'
@@ -32,7 +33,10 @@ let settings = {
   tabPinEnabled: true,        // Enable pin notes to sites
   floatingButtonEnabled: true, // Show floating button on pages with pinned notes
   autoTagDomain: true,         // Auto-add domain tag when creating notes
-  contextMenuAutoPin: true     // Auto-pin to site when saving via context menu
+  contextMenuAutoPin: true,    // Auto-pin to site when saving via context menu
+  trashEnabled: true,          // Move deleted notes to trash
+  cloudSyncEnabled: false,     // Sync notes via chrome.storage.sync
+  richEditorEnabled: true      // Show markdown toolbar
 };
 
 let currentTabHost = '';  // hostname of the active browser tab
@@ -348,6 +352,19 @@ const settingTabPin = document.getElementById('settingTabPin');
 const settingFloatingBtn = document.getElementById('settingFloatingBtn');
 const settingAutoTagDomain = document.getElementById('settingAutoTagDomain');
 const settingContextMenuAutoPin = document.getElementById('settingContextMenuAutoPin');
+const settingTrash = document.getElementById('settingTrash');
+const settingCloudSync = document.getElementById('settingCloudSync');
+const settingRichEditor = document.getElementById('settingRichEditor');
+
+// Trash UI
+const viewTrash = document.getElementById('viewTrash');
+const btnTrash = document.getElementById('btnTrash');
+const trashNotesEl = document.getElementById('trashNotes');
+const trashEmptyState = document.getElementById('trashEmptyState');
+const btnEmptyTrash = document.getElementById('btnEmptyTrash');
+
+// Rich Editor Toolbar
+const mdToolbar = document.getElementById('mdToolbar');
 
 // Smart Rules UI
 const btnEditRules = document.getElementById('btnEditRules');
@@ -432,8 +449,9 @@ const toastUndo = document.getElementById('toastUndo');
 // ── STORAGE ────────────────────────────────────
 function loadNotes() {
   return new Promise(resolve => {
-    chrome.storage.local.get(['qn_notes', 'qn_theme', 'qn_settings', '_pendingNote'], data => {
+    chrome.storage.local.get(['qn_notes', 'qn_theme', 'qn_settings', '_pendingNote', 'qn_trash'], data => {
       notes = data.qn_notes || [];
+      trash = data.qn_trash || [];
 
       // Load theme
       if (data.qn_theme === 'dark') {
@@ -468,6 +486,12 @@ function loadNotes() {
 function saveNotes() {
   chrome.storage.local.set({ qn_notes: notes });
   updateNoteCount();
+  // Cloud sync
+  if (settings.cloudSyncEnabled) syncToCloud();
+}
+
+function saveTrash() {
+  chrome.storage.local.set({ qn_trash: trash });
 }
 
 function saveSettings() {
@@ -484,6 +508,8 @@ function applySettings() {
       btn.classList.remove('show-always');
     }
   });
+  // Toolbar visibility
+  mdToolbar.classList.toggle('hidden', !settings.richEditorEnabled);
 }
 
 // ── SETTINGS MODAL ───────────────────────────────
@@ -503,6 +529,9 @@ function openSettings() {
   settingFloatingBtn.checked = settings.floatingButtonEnabled !== false;
   settingAutoTagDomain.checked = settings.autoTagDomain !== false;
   settingContextMenuAutoPin.checked = settings.contextMenuAutoPin !== false;
+  settingTrash.checked = settings.trashEnabled !== false;
+  settingCloudSync.checked = settings.cloudSyncEnabled === true;
+  settingRichEditor.checked = settings.richEditorEnabled !== false;
 
   // Set active theme option
   const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
@@ -558,6 +587,11 @@ btnSaveSettings.addEventListener('click', () => {
   settings.floatingButtonEnabled = settingFloatingBtn.checked;
   settings.autoTagDomain = settingAutoTagDomain.checked;
   settings.contextMenuAutoPin = settingContextMenuAutoPin.checked;
+  settings.trashEnabled = settingTrash.checked;
+  settings.cloudSyncEnabled = settingCloudSync.checked;
+  settings.richEditorEnabled = settingRichEditor.checked;
+  // Show/hide toolbar
+  mdToolbar.classList.toggle('hidden', !settings.richEditorEnabled);
   saveSettings();
   sortMode = settings.defaultSort;
   applySettings();
@@ -900,19 +934,21 @@ function showView(name) {
   viewNew.classList.toggle('hidden', name !== 'new');
   viewSearch.classList.toggle('hidden', name !== 'search');
   viewList.classList.toggle('hidden', name !== 'list');
+  viewTrash.classList.toggle('hidden', name !== 'trash');
 
   btnNew.classList.toggle('active', name === 'new');
   btnSearch.classList.toggle('active', name === 'search');
   btnList.classList.toggle('active', name === 'list');
+  btnTrash.classList.toggle('active', name === 'trash');
 
   sortBar.classList.toggle('hidden', name !== 'list');
 
   if (name === 'list') { renderAllNotes(); renderTagSidebar(); }
   if (name === 'search') { searchInput.focus(); renderSearch(); }
+  if (name === 'trash') { renderTrash(); }
   if (name === 'new' && !editingId && !hasPendingNote) {
     resetForm();
   }
-  // Reset the pending note flag after we've shown the new view once
   if (name !== 'new') {
     hasPendingNote = false;
   }
@@ -921,6 +957,7 @@ function showView(name) {
 btnNew.addEventListener('click', () => { editingId = null; showView('new'); });
 btnSearch.addEventListener('click', () => showView('search'));
 btnList.addEventListener('click', () => showView('list'));
+btnTrash.addEventListener('click', () => showView('trash'));
 
 // ── SORT BUTTONS ────────────────────────────────
 sortBtns.forEach(btn => {
@@ -1479,14 +1516,26 @@ function handleCardAction(action, id) {
     // Store for undo and remove immediately
     pendingDelete = { ...note };
     notes = notes.filter(n => n.id !== id);
-    saveNotes();
 
+    // Move to trash if enabled
+    if (settings.trashEnabled) {
+      pendingDelete.deletedAt = Date.now();
+      trash.unshift(pendingDelete);
+      saveTrash();
+    }
+
+    saveNotes();
     if (currentView === 'list') { renderAllNotes(); renderTagSidebar(); }
     if (currentView === 'search') renderSearch();
 
     // Show undo toast
     showToastWithUndo('🗑 Note deleted', () => {
-      // Undo callback
+      // Undo callback — restore from trash too
+      if (settings.trashEnabled) {
+        trash = trash.filter(n => n.id !== pendingDelete.id);
+        delete pendingDelete.deletedAt;
+        saveTrash();
+      }
       notes.unshift(pendingDelete);
       pendingDelete = null;
       saveNotes();
@@ -1679,6 +1728,158 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
+// ── TRASH ────────────────────────────────────────
+function renderTrash() {
+  trashNotesEl.innerHTML = '';
+  if (trash.length === 0) {
+    trashEmptyState.classList.remove('hidden');
+    return;
+  }
+  trashEmptyState.classList.add('hidden');
+  trash.forEach(note => {
+    const card = document.createElement('div');
+    card.className = `note-card c-${note.color || 0}`;
+    const deletedDate = note.deletedAt ? new Date(note.deletedAt).toLocaleDateString() : '';
+    const daysLeft = note.deletedAt ? Math.max(0, 30 - Math.floor((Date.now() - note.deletedAt) / 86400000)) : '?';
+    card.innerHTML = `
+      ${note.title ? `<div class="note-title">${escapeHtml(note.title)}</div>` : ''}
+      ${note.body ? `<div class="note-body">${escapeHtml(note.body).substring(0, 120)}${note.body.length > 120 ? '…' : ''}</div>` : ''}
+      <div class="trash-meta">Deleted ${deletedDate} · ${daysLeft} days left</div>
+      <div class="trash-actions">
+        <button class="trash-btn restore" data-id="${note.id}">↩ Restore</button>
+        <button class="trash-btn perma-del" data-id="${note.id}">✕ Delete Forever</button>
+      </div>
+    `;
+    card.querySelector('.restore').addEventListener('click', () => {
+      const restored = trash.find(n => n.id === note.id);
+      if (!restored) return;
+      delete restored.deletedAt;
+      trash = trash.filter(n => n.id !== note.id);
+      notes.unshift(restored);
+      saveNotes();
+      saveTrash();
+      renderTrash();
+      showToast('↩️ Note restored!');
+    });
+    card.querySelector('.perma-del').addEventListener('click', () => {
+      trash = trash.filter(n => n.id !== note.id);
+      saveTrash();
+      renderTrash();
+      showToast('🗑 Permanently deleted');
+    });
+    trashNotesEl.appendChild(card);
+  });
+}
+
+btnEmptyTrash.addEventListener('click', () => {
+  if (trash.length === 0) return;
+  if (confirm('Permanently delete all trashed notes?')) {
+    trash = [];
+    saveTrash();
+    renderTrash();
+    showToast('🗑 Trash emptied');
+  }
+});
+
+// ── RICH TEXT TOOLBAR ────────────────────────────
+mdToolbar.addEventListener('click', e => {
+  const btn = e.target.closest('[data-md]');
+  if (!btn) return;
+  const action = btn.dataset.md;
+  const ta = noteBody;
+  const start = ta.selectionStart;
+  const end = ta.selectionEnd;
+  const sel = ta.value.substring(start, end);
+  let before = '', after = '', insert = '';
+
+  switch (action) {
+    case 'bold': before = '**'; after = '**'; break;
+    case 'italic': before = '*'; after = '*'; break;
+    case 'strike': before = '~~'; after = '~~'; break;
+    case 'code': before = '`'; after = '`'; break;
+    case 'h1': before = '# '; break;
+    case 'h2': before = '## '; break;
+    case 'ul': insert = '- '; break;
+    case 'ol': insert = '1. '; break;
+    case 'check': insert = '- [ ] '; break;
+    case 'link': before = '['; after = '](url)'; break;
+    case 'hr': insert = '\n---\n'; break;
+    case 'quote': before = '> '; break;
+  }
+
+  if (insert) {
+    // Insert at cursor (line-prefix)
+    ta.setRangeText(insert, start, end, 'end');
+  } else if (sel) {
+    ta.setRangeText(before + sel + after, start, end, 'end');
+  } else {
+    const placeholder = action === 'link' ? 'text' : action;
+    ta.setRangeText(before + placeholder + after, start, end, 'end');
+  }
+  ta.focus();
+  // Trigger input event so char count updates
+  ta.dispatchEvent(new Event('input'));
+});
+
+// ── CLOUD SYNC ──────────────────────────────────
+const SYNC_CHUNK_SIZE = 7000; // slightly under 8KB limit
+
+function syncToCloud() {
+  try {
+    const json = JSON.stringify(notes);
+    if (json.length > 95000) {
+      console.warn('[QuickNote] Notes too large for sync, skipping');
+      return;
+    }
+    // Chunk the data
+    const chunks = {};
+    const totalChunks = Math.ceil(json.length / SYNC_CHUNK_SIZE);
+    for (let i = 0; i < totalChunks; i++) {
+      chunks[`qn_sync_${i}`] = json.substring(i * SYNC_CHUNK_SIZE, (i + 1) * SYNC_CHUNK_SIZE);
+    }
+    chunks.qn_sync_meta = { totalChunks, updatedAt: Date.now() };
+    // Clear old chunks first then write new ones
+    chrome.storage.sync.clear(() => {
+      chrome.storage.sync.set(chunks);
+    });
+  } catch (e) {
+    console.warn('[QuickNote] Sync error:', e);
+  }
+}
+
+function loadFromCloud() {
+  return new Promise(resolve => {
+    if (!settings.cloudSyncEnabled) { resolve(); return; }
+    chrome.storage.sync.get(null, data => {
+      if (!data.qn_sync_meta) { resolve(); return; }
+      const { totalChunks, updatedAt } = data.qn_sync_meta;
+      let json = '';
+      for (let i = 0; i < totalChunks; i++) {
+        json += data[`qn_sync_${i}`] || '';
+      }
+      try {
+        const cloudNotes = JSON.parse(json);
+        // Merge: add cloud notes that don't exist locally
+        let added = 0;
+        cloudNotes.forEach(cn => {
+          const local = notes.find(n => n.id === cn.id);
+          if (!local) {
+            notes.push(cn);
+            added++;
+          } else if (cn.updatedAt > local.updatedAt) {
+            // Cloud version is newer — update local
+            Object.assign(local, cn);
+          }
+        });
+        if (added > 0) {
+          saveNotes();
+        }
+      } catch { /* ignore parse errors */ }
+      resolve();
+    });
+  });
+}
+
 // ── INIT ─────────────────────────────────────────
 // Detect active tab hostname
 try {
@@ -1690,15 +1891,18 @@ try {
     }
     loadNotes().then(() => {
       updateNoteCount();
-      // Check if opened via site-pin button (content script)
-      chrome.storage.local.get('_openToList', data => {
-        if (data._openToList) {
-          chrome.storage.local.remove('_openToList');
-          showView('list');
-        } else {
-          showView('new');
-          noteBody.focus();
-        }
+      // Load cloud data if sync enabled
+      loadFromCloud().then(() => {
+        // Check if opened via site-pin button (content script)
+        chrome.storage.local.get('_openToList', data => {
+          if (data._openToList) {
+            chrome.storage.local.remove('_openToList');
+            showView('list');
+          } else {
+            showView('new');
+            noteBody.focus();
+          }
+        });
       });
     });
   });
