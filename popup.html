@@ -250,91 +250,162 @@
         <h2>⚙ Settings</h2>
         <button class="settings-close" id="btnCloseSettings">✕</button>
       </div>
+      
+      <!-- Tab Navigation -->
+      <div class="settings-tabs">
+        <button class="settings-tab-btn active" data-tab="tabGeneral">General</button>
+        <button class="settings-tab-btn" data-tab="tabProductivity">Productivity</button>
+        <button class="settings-tab-btn" data-tab="tabSmartRules">Smart Rules</button>
+        <button class="settings-tab-btn" data-tab="tabAboutHelp">About & Help</button>
+      </div>
+
       <div class="settings-body">
-        <div class="setting-group">
-          <label class="setting-label">Default Sort Order</label>
-          <select class="setting-select" id="settingSortOrder">
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
-            <option value="az">A → Z</option>
-            <option value="color">By Color</option>
-          </select>
-        </div>
-        <div class="setting-group">
-          <label class="setting-label">Always Show Action Buttons</label>
-          <input type="checkbox" class="setting-checkbox" id="settingShowActions">
-          <span class="setting-hint">Uncheck to show only on hover</span>
-        </div>
-        <div class="setting-group">
-          <label class="setting-label">Enable Reminders</label>
-          <input type="checkbox" class="setting-checkbox" id="settingReminders">
-          <span class="setting-hint">Allow setting date/time reminders on notes</span>
-        </div>
-        <div class="setting-group">
-          <label class="setting-label">Smart Rules</label>
-          <input type="checkbox" class="setting-checkbox" id="settingSmartRules">
-          <span class="setting-hint">Enable pattern-based automation</span>
-          <button class="btn-secondary settings-edit-rules" id="btnEditRules">Manage Rules →</button>
-        </div>
-        <div class="setting-group">
-          <label class="setting-label">Rules Trigger</label>
-          <select class="setting-select" id="settingRulesTrigger">
-            <option value="manual">Manual Only</option>
-            <option value="typing">While Typing</option>
-            <option value="autosave">Auto on Save</option>
-          </select>
-          <span class="setting-hint">When rules are applied</span>
-        </div>
-        <div class="setting-group">
-          <label class="setting-label">Multiple Rules Match</label>
-          <select class="setting-select" id="settingRulesPriority">
-            <option value="first">First Match Wins</option>
-            <option value="all">Apply All Matching</option>
-          </select>
-          <span class="setting-hint">How to handle multiple matching rules</span>
-        </div>
-        <div class="setting-group">
-          <label class="setting-label">Reminder Notification Action</label>
-          <select class="setting-select" id="settingReminderAction">
-            <option value="dismiss">Auto-Dismiss on Click</option>
-            <option value="snooze">Snooze 1 Hour on Click</option>
-            <option value="both">Let Me Choose</option>
-          </select>
-        </div>
-        <div class="setting-group">
-          <label class="setting-label">Context Menu</label>
-          <input type="checkbox" class="setting-checkbox" id="settingContextMenu">
-          <span class="setting-hint">Show "Save to QuickNote" in right-click menu</span>
-        </div>
-        <div class="setting-group">
-          <label class="setting-label">When Text Captured</label>
-          <select class="setting-select" id="settingContextMenuBehavior">
-            <option value="show">Show popup with text pre-filled</option>
-            <option value="background">Save in background (no popup)</option>
-          </select>
-          <span class="setting-hint">Choose how captured text is handled</span>
-        </div>
-        <div class="setting-group">
-          <label class="setting-label">Global Shortcut</label>
-          <input type="checkbox" class="setting-checkbox" id="settingGlobalShortcut">
-          <span class="setting-hint">Ctrl+Shift+Space to open QuickNote</span>
-        </div>
-        <div class="setting-group">
-          <label class="setting-label">Note Linking</label>
-          <input type="checkbox" class="setting-checkbox" id="settingNoteLinking">
-          <span class="setting-hint">Use [[note title]] to cross-reference notes</span>
-        </div>
-        <div class="setting-group">
-          <label class="setting-label">Theme</label>
-          <div class="setting-theme">
-            <button class="theme-option" data-theme="light">☀️ Light</button>
-            <button class="theme-option" data-theme="dark">🌙 Dark</button>
+        
+        <!-- TAB 1: GENERAL -->
+        <div class="settings-tab-content active" id="tabGeneral">
+          <div class="setting-group">
+            <label class="setting-label">Default Sort Order</label>
+            <select class="setting-select" id="settingSortOrder">
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="az">A → Z</option>
+              <option value="color">By Color</option>
+            </select>
+          </div>
+          <div class="setting-group">
+            <label class="setting-label">Always Show Action Buttons</label>
+            <input type="checkbox" class="setting-checkbox" id="settingShowActions">
+            <span class="setting-hint">Uncheck to show only on hover</span>
+          </div>
+          <div class="setting-group">
+            <label class="setting-label">Note Linking</label>
+            <input type="checkbox" class="setting-checkbox" id="settingNoteLinking">
+            <span class="setting-hint">Use [[note title]] to cross-reference notes</span>
+          </div>
+          <div class="setting-group">
+            <label class="setting-label">Theme</label>
+            <div class="setting-theme">
+              <button class="theme-option" data-theme="light">☀️ Light</button>
+              <button class="theme-option" data-theme="dark">🌙 Dark</button>
+            </div>
+          </div>
+          <div class="setting-group danger-zone">
+            <label class="setting-label">Danger Zone</label>
+            <button class="btn-danger" id="btnClearAll">🗑 Clear All Notes</button>
           </div>
         </div>
-        <div class="setting-group danger-zone">
-          <label class="setting-label">Danger Zone</label>
-          <button class="btn-danger" id="btnClearAll">🗑 Clear All Notes</button>
+
+        <!-- TAB 2: PRODUCTIVITY -->
+        <div class="settings-tab-content hidden" id="tabProductivity">
+          <div class="setting-group">
+            <label class="setting-label">Context Menu</label>
+            <input type="checkbox" class="setting-checkbox" id="settingContextMenu">
+            <span class="setting-hint">Show "Save to QuickNote" in right-click menu</span>
+          </div>
+          <div class="setting-group">
+            <label class="setting-label">When Text Captured</label>
+            <select class="setting-select" id="settingContextMenuBehavior">
+              <option value="show">Show popup with text pre-filled</option>
+              <option value="background">Save in background (no popup)</option>
+            </select>
+            <span class="setting-hint">Choose how captured text is handled</span>
+          </div>
+          <div class="setting-group">
+            <label class="setting-label">Global Shortcut</label>
+            <input type="checkbox" class="setting-checkbox" id="settingGlobalShortcut">
+            <span class="setting-hint">Ctrl+Shift+Space to open QuickNote (configure in chrome://extensions/shortcuts)</span>
+          </div>
+          <div class="setting-group">
+            <label class="setting-label">Enable Reminders</label>
+            <input type="checkbox" class="setting-checkbox" id="settingReminders">
+            <span class="setting-hint">Allow setting date/time reminders on notes</span>
+          </div>
         </div>
+
+        <!-- TAB 3: SMART RULES -->
+        <div class="settings-tab-content hidden" id="tabSmartRules">
+          <div class="setting-group">
+            <label class="setting-label">Smart Rules</label>
+            <input type="checkbox" class="setting-checkbox" id="settingSmartRules">
+            <span class="setting-hint">Enable pattern-based automation</span>
+          </div>
+          <div class="setting-group">
+            <label class="setting-label">Rules Trigger</label>
+            <select class="setting-select" id="settingRulesTrigger">
+              <option value="manual">Manual Only</option>
+              <option value="typing">While Typing</option>
+              <option value="autosave">Auto on Save</option>
+            </select>
+            <span class="setting-hint">When rules are applied</span>
+          </div>
+          <div class="setting-group">
+            <label class="setting-label">Multiple Rules Match</label>
+            <select class="setting-select" id="settingRulesPriority">
+              <option value="first">First Match Wins</option>
+              <option value="all">Apply All Matching</option>
+            </select>
+            <span class="setting-hint">How to handle multiple matching rules</span>
+          </div>
+          <div class="setting-group">
+            <label class="setting-label">Reminder Notification Action</label>
+            <select class="setting-select" id="settingReminderAction">
+              <option value="dismiss">Auto-Dismiss on Click</option>
+              <option value="snooze">Snooze 1 Hour on Click</option>
+              <option value="both">Let Me Choose</option>
+            </select>
+          </div>
+          <div class="setting-group">
+            <button class="btn-secondary settings-edit-rules" id="btnEditRules">Manage Rules →</button>
+          </div>
+        </div>
+
+        <!-- TAB 4: ABOUT & HELP -->
+        <div class="settings-tab-content hidden" id="tabAboutHelp">
+          <div class="about-section">
+            <h3>QuickNote v1.0.0</h3>
+            <p>Fast, beautiful, always-there note-taking.</p>
+            <p class="credits">© 2024 — Released under MIT License</p>
+          </div>
+          
+          <div class="help-section">
+            <h3>📖 Guide</h3>
+            
+            <div class="help-item">
+              <h4>Core Features</h4>
+              <p>Create new notes, search powerfully, auto-tag with <code>#tags</code>, sort dynamically, and color-code notes.</p>
+            </div>
+            
+            <div class="help-item">
+              <h4>Smart Rules</h4>
+              <p>Define regex patterns that automatically apply titles, colors, templates and reminders when matched in your notes. Use capture groups like <code>$1</code> in your templates.</p>
+            </div>
+            
+            <div class="help-item">
+              <h4>Productivity</h4>
+              <p>Use the context menu to quick-capture web text. Enable the global shortcut to launch anytime. Save notes silently in the background.</p>
+            </div>
+            
+            <div class="help-item">
+              <h4>Note Linking</h4>
+              <p>Type <code>[[note-title]]</code> in any note to instantly link to or cross-reference other existing notes.</p>
+            </div>
+            
+            <div class="help-item">
+              <h4>Reminders</h4>
+              <p>Set precise date/time reminders for follow-ups. Customize notification actions like snooze or auto-dismiss.</p>
+            </div>
+            
+            <div class="help-item">
+              <h4>Keyboard Shortcuts</h4>
+              <ul class="help-shortcuts">
+                <li><kbd>Alt</kbd> + <kbd>N</kbd> : New Note</li>
+                <li><kbd>Alt</kbd> + <kbd>S</kbd> : Search</li>
+                <li><kbd>Esc</kbd> : Cancel/Close</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
       </div>
       <div class="settings-footer">
         <button class="btn-primary" id="btnSaveSettings">Save Settings</button>

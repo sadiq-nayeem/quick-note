@@ -335,6 +335,10 @@ const settingGlobalShortcut = document.getElementById('settingGlobalShortcut');
 const settingNoteLinking = document.getElementById('settingNoteLinking');
 const themeOptions = document.querySelectorAll('.theme-option');
 
+// Settings Tabs UI
+const settingsTabBtns = document.querySelectorAll('.settings-tab-btn');
+const settingsTabContents = document.querySelectorAll('.settings-tab-content');
+
 // Smart Rules UI
 const btnEditRules = document.getElementById('btnEditRules');
 const rulesOverlay = document.getElementById('rulesOverlay');
@@ -492,6 +496,14 @@ function openSettings() {
     btn.classList.toggle('active', btn.dataset.theme === currentTheme);
   });
 
+  // Reset to General tab
+  settingsTabBtns.forEach(b => b.classList.remove('active'));
+  settingsTabContents.forEach(c => c.classList.add('hidden'));
+  const firstTabBtn = document.querySelector('.settings-tab-btn[data-tab="tabGeneral"]');
+  const firstTabContent = document.getElementById('tabGeneral');
+  if (firstTabBtn) firstTabBtn.classList.add('active');
+  if (firstTabContent) firstTabContent.classList.remove('hidden');
+
   settingsOverlay.classList.remove('hidden');
 }
 
@@ -503,6 +515,17 @@ settingsBtn.addEventListener('click', openSettings);
 btnCloseSettings.addEventListener('click', closeSettings);
 settingsOverlay.addEventListener('click', e => {
   if (e.target === settingsOverlay) closeSettings();
+});
+
+// Tab switching
+settingsTabBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const targetTabId = btn.dataset.tab;
+    settingsTabBtns.forEach(b => b.classList.remove('active'));
+    settingsTabContents.forEach(c => c.classList.add('hidden'));
+    btn.classList.add('active');
+    document.getElementById(targetTabId).classList.remove('hidden');
+  });
 });
 
 btnSaveSettings.addEventListener('click', () => {
