@@ -1129,6 +1129,7 @@ body {
   white-space: pre-wrap;
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -1159,43 +1160,63 @@ body {
 
 .note-footer {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   margin-top: 8px;
+  gap: 8px;
 }
 
 .note-time {
   font-size: 10px;
   opacity: .6;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .note-actions {
   display: flex;
-  gap: 2px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
   opacity: 0;
-  transition: opacity .2s;
+  transform: translateY(4px);
+  transition: opacity .2s, transform .2s;
 }
 
 .note-card:hover .note-actions,
 .note-actions.show-always {
   opacity: 1;
+  transform: translateY(0);
 }
 
 .note-action-btn {
-  background: rgba(255, 255, 255, .45);
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  padding: 3px 6px;
+  background: rgba(255, 255, 255, .4);
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: 12px;
+  font-size: 13px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  transition: background .12s, transform .1s;
+  transition: all .2s ease;
   color: inherit;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
 .note-action-btn:hover {
-  background: rgba(255, 255, 255, .75);
-  transform: scale(1.15);
+  background: rgba(255, 255, 255, .9);
+  border-color: rgba(255, 255, 255, .6);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+.note-action-btn[data-action="del"]:hover {
+  background: var(--danger);
+  color: white;
+  border-color: var(--danger);
+  box-shadow: 0 4px 8px color-mix(in srgb, var(--danger) 30%, transparent);
 }
 
 /* ── EMPTY STATE ── */
