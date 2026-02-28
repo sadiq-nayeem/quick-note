@@ -3,13 +3,13 @@
    ───────────────────────────────────────────── */
 
 // ── STATE ──────────────────────────────────────
-let notes      = [];
-let editingId  = null;
-let deleteId   = null;
+let notes = [];
+let editingId = null;
+let deleteId = null;
 let searchMode = 'normal';  // 'normal' | 'strict' | 'regex'
 let currentView = 'new';    // 'new' | 'search' | 'list'
-let sortMode   = 'newest';  // 'newest' | 'oldest' | 'az' | 'color'
-let activeTag  = null;      // currently filtered tag
+let sortMode = 'newest';  // 'newest' | 'oldest' | 'az' | 'color'
+let activeTag = null;      // currently filtered tag
 let selectedColor = null;   // manually selected color
 let pendingDelete = null;   // for undo delete
 let undoTimer = null;       // undo timeout timer
@@ -70,13 +70,13 @@ function extractTags(text) {
 function timeAgo(ts) {
   const diff = Date.now() - ts;
   const s = Math.floor(diff / 1000);
-  if (s < 60)  return 'just now';
+  if (s < 60) return 'just now';
   const m = Math.floor(s / 60);
-  if (m < 60)  return `${m}m ago`;
+  if (m < 60) return `${m}m ago`;
   const h = Math.floor(m / 60);
-  if (h < 24)  return `${h}h ago`;
+  if (h < 24) return `${h}h ago`;
   const d = Math.floor(h / 24);
-  if (d < 30)  return `${d}d ago`;
+  if (d < 30) return `${d}d ago`;
   return new Date(ts).toLocaleDateString();
 }
 
@@ -290,9 +290,9 @@ function highlight(text, query, mode) {
   if (!query) return escapeHtml(text);
   let pattern;
   try {
-    if (mode === 'regex')  pattern = new RegExp(`(${query})`, 'g');
+    if (mode === 'regex') pattern = new RegExp(`(${query})`, 'g');
     else if (mode === 'strict') pattern = new RegExp(`(${escapeRegex(query)})`, 'g');
-    else                   pattern = new RegExp(`(${escapeRegex(query)})`, 'gi');
+    else pattern = new RegExp(`(${escapeRegex(query)})`, 'gi');
   } catch { return escapeHtml(text); }
   return escapeHtml(text).replace(pattern, '<mark>$1</mark>');
 }
@@ -301,19 +301,19 @@ function matchesSearch(note, query, mode) {
   if (!query) return true;
   const targets = [note.title, note.body, note.comment, ...(note.tags || [])].join(' ');
   try {
-    if (mode === 'regex')  return new RegExp(query).test(targets);
+    if (mode === 'regex') return new RegExp(query).test(targets);
     if (mode === 'strict') return targets.includes(query);
     return targets.toLowerCase().includes(query.toLowerCase());
   } catch { return false; }
 }
 
 // ── DOM REFS ────────────────────────────────────
-const themeBtn       = document.getElementById('themeBtn');
-const settingsBtn    = document.getElementById('settingsBtn');
-const importBtn      = document.getElementById('importBtn');
-const exportBtn      = document.getElementById('exportBtn');
-const importInput    = document.getElementById('importInput');
-const noteCountEl    = document.getElementById('noteCount');
+const themeBtn = document.getElementById('themeBtn');
+const settingsBtn = document.getElementById('settingsBtn');
+const importBtn = document.getElementById('importBtn');
+const exportBtn = document.getElementById('exportBtn');
+const importInput = document.getElementById('importInput');
+const noteCountEl = document.getElementById('noteCount');
 
 const btnMarkdownHelp = document.getElementById('btnMarkdownHelp');
 const markdownHelpTooltip = document.getElementById('markdownHelpTooltip');
@@ -365,24 +365,24 @@ const btnDeleteRule = document.getElementById('btnDeleteRule');
 const ruleMatches = document.getElementById('ruleMatches');
 const ruleMatchList = document.getElementById('ruleMatchList');
 
-const btnNew         = document.getElementById('btnNew');
-const btnSearch      = document.getElementById('btnSearch');
-const btnList        = document.getElementById('btnList');
+const btnNew = document.getElementById('btnNew');
+const btnSearch = document.getElementById('btnSearch');
+const btnList = document.getElementById('btnList');
 
-const viewNew        = document.getElementById('viewNew');
-const viewSearch     = document.getElementById('viewSearch');
-const viewList       = document.getElementById('viewList');
-const sortBar        = document.getElementById('sortBar');
-const sortBtns       = document.querySelectorAll('.sort-btn');
-const tagSidebar     = document.getElementById('tagSidebar');
-const tagList        = document.getElementById('tagList');
+const viewNew = document.getElementById('viewNew');
+const viewSearch = document.getElementById('viewSearch');
+const viewList = document.getElementById('viewList');
+const sortBar = document.getElementById('sortBar');
+const sortBtns = document.querySelectorAll('.sort-btn');
+const tagSidebar = document.getElementById('tagSidebar');
+const tagList = document.getElementById('tagList');
 
-const noteTitle      = document.getElementById('noteTitle');
-const noteBody       = document.getElementById('noteBody');
-const noteComment    = document.getElementById('noteComment');
-const charCount      = document.getElementById('charCount');
-const btnSave        = document.getElementById('btnSave');
-const btnCancelEdit  = document.getElementById('btnCancelEdit');
+const noteTitle = document.getElementById('noteTitle');
+const noteBody = document.getElementById('noteBody');
+const noteComment = document.getElementById('noteComment');
+const charCount = document.getElementById('charCount');
+const btnSave = document.getElementById('btnSave');
+const btnCancelEdit = document.getElementById('btnCancelEdit');
 
 const reminderToggle = document.getElementById('reminderToggle');
 const reminderDate = document.getElementById('reminderDate');
@@ -390,17 +390,17 @@ const reminderDate = document.getElementById('reminderDate');
 const btnMarkdownToggle = document.getElementById('btnMarkdownToggle');
 const markdownPreview = document.getElementById('markdownPreview');
 
-const searchInput    = document.getElementById('searchInput');
-const modeBtns       = document.querySelectorAll('.mode-btn');
-const searchResults  = document.getElementById('searchResults');
-const searchError    = document.getElementById('searchError');
+const searchInput = document.getElementById('searchInput');
+const modeBtns = document.querySelectorAll('.mode-btn');
+const searchResults = document.getElementById('searchResults');
+const searchError = document.getElementById('searchError');
 
-const allNotes       = document.getElementById('allNotes');
-const emptyState     = document.getElementById('emptyState');
+const allNotes = document.getElementById('allNotes');
+const emptyState = document.getElementById('emptyState');
 
-const toast          = document.getElementById('toast');
+const toast = document.getElementById('toast');
 
-const overlay        = document.getElementById('overlay');
+const overlay = document.getElementById('overlay');
 const btnCancelDelete = document.getElementById('btnCancelDelete');
 const btnConfirmDelete = document.getElementById('btnConfirmDelete');
 
@@ -413,11 +413,11 @@ const btnViewModalClose = document.getElementById('btnViewModalClose');
 const btnViewModalEdit = document.getElementById('btnViewModalEdit');
 let currentViewNoteId = null;
 
-const templateBtns   = document.querySelectorAll('.template-btn');
-const colorBtns      = document.querySelectorAll('.color-btn');
+const templateBtns = document.querySelectorAll('.template-btn');
+const colorBtns = document.querySelectorAll('.color-btn');
 const btnRandomColor = document.getElementById('btnRandomColor');
-const toastMsg       = document.getElementById('toastMsg');
-const toastUndo      = document.getElementById('toastUndo');
+const toastMsg = document.getElementById('toastMsg');
+const toastUndo = document.getElementById('toastUndo');
 
 // ── STORAGE ────────────────────────────────────
 function loadNotes() {
@@ -828,10 +828,10 @@ reminderToggle.addEventListener('change', () => {
 // ── EXPORT ──────────────────────────────────────
 exportBtn.addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(notes, null, 2)], { type: 'application/json' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = `quicknotes-${new Date().toISOString().slice(0,10)}.json`;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `quicknotes-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
   showToast('📦 Notes exported!');
@@ -879,13 +879,13 @@ function updateNoteCount() {
 // ── VIEW SWITCHING ──────────────────────────────
 function showView(name) {
   currentView = name;
-  viewNew.classList.toggle('hidden',    name !== 'new');
+  viewNew.classList.toggle('hidden', name !== 'new');
   viewSearch.classList.toggle('hidden', name !== 'search');
-  viewList.classList.toggle('hidden',   name !== 'list');
+  viewList.classList.toggle('hidden', name !== 'list');
 
-  btnNew.classList.toggle('active',    name === 'new');
+  btnNew.classList.toggle('active', name === 'new');
   btnSearch.classList.toggle('active', name === 'search');
-  btnList.classList.toggle('active',   name === 'list');
+  btnList.classList.toggle('active', name === 'list');
 
   sortBar.classList.toggle('hidden', name !== 'list');
 
@@ -900,9 +900,9 @@ function showView(name) {
   }
 }
 
-btnNew.addEventListener('click',    () => { editingId = null; showView('new'); });
+btnNew.addEventListener('click', () => { editingId = null; showView('new'); });
 btnSearch.addEventListener('click', () => showView('search'));
-btnList.addEventListener('click',   () => showView('list'));
+btnList.addEventListener('click', () => showView('list'));
 
 // ── SORT BUTTONS ────────────────────────────────
 sortBtns.forEach(btn => {
@@ -918,8 +918,8 @@ sortBtns.forEach(btn => {
 function resetForm() {
   editingId = null;
   selectedColor = null;
-  noteTitle.value   = '';
-  noteBody.value    = '';
+  noteTitle.value = '';
+  noteBody.value = '';
   noteComment.value = '';
   charCount.textContent = '0 chars · 0 words';
   btnSave.textContent = 'Save →';
@@ -1024,9 +1024,9 @@ function saveNote() {
     }
   }
 
-  const title   = noteTitle.value.trim();
+  const title = noteTitle.value.trim();
   const comment = noteComment.value.trim();
-  const tags    = extractTags(body);
+  const tags = extractTags(body);
   const references = extractReferences(body);
 
   // Handle reminder
@@ -1140,7 +1140,7 @@ function sortedNotes(list) {
   return [...list].sort((a, b) => {
     // Pinned notes always first
     if (a.pinned && !b.pinned) return -1;
-    if (!a.pinned && b.pinned) return  1;
+    if (!a.pinned && b.pinned) return 1;
 
     // Then apply selected sort mode
     switch (sortMode) {
@@ -1170,13 +1170,14 @@ function buildCard(note, query = '', mode = 'normal') {
     card.dataset.draggable = 'true';
   }
 
-  const titleHtml   = note.title   ? `<div class="note-title">${highlight(note.title,   query, mode)}</div>` : '';
-  const bodyHtml    = note.body    ? `<div class="note-body">${highlight(note.body,    query, mode)}</div>` : '';
+  const titleHtml = note.title ? `<div class="note-title">${highlight(note.title, query, mode)}</div>` : '';
+  const bodyContent = note.body ? (query ? highlight(note.body, query, mode) : parseMarkdown(note.body)) : '';
+  const bodyHtml = bodyContent ? `<div class="note-body markdown-preview">${bodyContent}</div>` : '';
   const commentHtml = note.comment ? `<div class="note-comment">💬 ${highlight(note.comment, query, mode)}</div>` : '';
-  const pinBadge    = note.pinned  ? `<span class="note-pin-badge">📌</span>` : '';
-  const favBadge    = note.favorite ? `<span class="note-fav-badge">⭐</span>` : '';
-  const remBadge    = note.reminder ? `<span class="note-rem-badge">🔔</span>` : '';
-  const tagsHtml    = note.tags && note.tags.length
+  const pinBadge = note.pinned ? `<span class="note-pin-badge">📌</span>` : '';
+  const favBadge = note.favorite ? `<span class="note-fav-badge">⭐</span>` : '';
+  const remBadge = note.reminder ? `<span class="note-rem-badge">🔔</span>` : '';
+  const tagsHtml = note.tags && note.tags.length
     ? `<div class="note-tags">${note.tags.map(t => `<span class="note-tag">${escapeHtml(t)}</span>`).join('')}</div>`
     : '';
 
@@ -1344,7 +1345,7 @@ function handleCardAction(action, id) {
   if (action === 'pin') {
     note.pinned = !note.pinned;
     saveNotes();
-    if (currentView === 'list')   renderAllNotes();
+    if (currentView === 'list') renderAllNotes();
     if (currentView === 'search') renderSearch();
     showToast(note.pinned ? '📌 Pinned!' : '📍 Unpinned');
   }
@@ -1352,7 +1353,7 @@ function handleCardAction(action, id) {
   if (action === 'favorite') {
     note.favorite = !note.favorite;
     saveNotes();
-    if (currentView === 'list')   renderAllNotes();
+    if (currentView === 'list') renderAllNotes();
     if (currentView === 'search') renderSearch();
     showToast(note.favorite ? '⭐ Favorited!' : '☆ Unfavorited');
   }
@@ -1380,8 +1381,8 @@ function handleCardAction(action, id) {
 
   if (action === 'edit') {
     editingId = id;
-    noteTitle.value   = note.title   || '';
-    noteBody.value    = note.body    || '';
+    noteTitle.value = note.title || '';
+    noteBody.value = note.body || '';
     noteComment.value = note.comment || '';
     charCount.textContent = countWordsChars(note.body || '');
     btnSave.textContent = 'Update →';

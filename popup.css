@@ -731,6 +731,20 @@ body {
   display: none;
 }
 
+/* Override when used inside note cards */
+.note-body.markdown-preview {
+  background: none;
+  border: none;
+  padding: 0;
+  min-height: 0;
+  font-size: 12px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  line-clamp: 3;
+  overflow: hidden;
+}
+
 .markdown-preview h1 {
   font-size: 16px;
   font-weight: 800;
