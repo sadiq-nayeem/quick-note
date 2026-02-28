@@ -9,7 +9,8 @@
     "notifications",
     "contextMenus",
     "activeTab",
-    "tabs"
+    "tabs",
+    "downloads"
   ],
   "background": {
     "service_worker": "background.js"

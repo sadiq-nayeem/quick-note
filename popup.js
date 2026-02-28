@@ -35,7 +35,7 @@ let settings = {
   autoTagDomain: true,         // Auto-add domain tag when creating notes
   contextMenuAutoPin: true,    // Auto-pin to site when saving via context menu
   trashEnabled: true,          // Move deleted notes to trash
-  cloudSyncEnabled: false,     // Sync notes via chrome.storage.sync
+  syncMode: 'off',             // 'off' | 'cloud' | 'local' | 'both'
   richEditorEnabled: true      // Show markdown toolbar
 };
 
@@ -353,7 +353,7 @@ const settingFloatingBtn = document.getElementById('settingFloatingBtn');
 const settingAutoTagDomain = document.getElementById('settingAutoTagDomain');
 const settingContextMenuAutoPin = document.getElementById('settingContextMenuAutoPin');
 const settingTrash = document.getElementById('settingTrash');
-const settingCloudSync = document.getElementById('settingCloudSync');
+const settingSyncMode = document.getElementById('settingSyncMode');
 const settingRichEditor = document.getElementById('settingRichEditor');
 
 // Trash UI
@@ -486,8 +486,9 @@ function loadNotes() {
 function saveNotes() {
   chrome.storage.local.set({ qn_notes: notes });
   updateNoteCount();
-  // Cloud sync
-  if (settings.cloudSyncEnabled) syncToCloud();
+  // Sync
+  if (settings.syncMode === 'cloud' || settings.syncMode === 'both') syncToCloud();
+  if (settings.syncMode === 'local' || settings.syncMode === 'both') syncToLocal();
 }
 
 function saveTrash() {
@@ -530,7 +531,7 @@ function openSettings() {
   settingAutoTagDomain.checked = settings.autoTagDomain !== false;
   settingContextMenuAutoPin.checked = settings.contextMenuAutoPin !== false;
   settingTrash.checked = settings.trashEnabled !== false;
-  settingCloudSync.checked = settings.cloudSyncEnabled === true;
+  settingSyncMode.value = settings.syncMode || 'off';
   settingRichEditor.checked = settings.richEditorEnabled !== false;
 
   // Set active theme option
@@ -588,7 +589,7 @@ btnSaveSettings.addEventListener('click', () => {
   settings.autoTagDomain = settingAutoTagDomain.checked;
   settings.contextMenuAutoPin = settingContextMenuAutoPin.checked;
   settings.trashEnabled = settingTrash.checked;
-  settings.cloudSyncEnabled = settingCloudSync.checked;
+  settings.syncMode = settingSyncMode.value;
   settings.richEditorEnabled = settingRichEditor.checked;
   // Show/hide toolbar
   mdToolbar.classList.toggle('hidden', !settings.richEditorEnabled);
@@ -1831,14 +1832,12 @@ function syncToCloud() {
       console.warn('[QuickNote] Notes too large for sync, skipping');
       return;
     }
-    // Chunk the data
     const chunks = {};
     const totalChunks = Math.ceil(json.length / SYNC_CHUNK_SIZE);
     for (let i = 0; i < totalChunks; i++) {
       chunks[`qn_sync_${i}`] = json.substring(i * SYNC_CHUNK_SIZE, (i + 1) * SYNC_CHUNK_SIZE);
     }
     chunks.qn_sync_meta = { totalChunks, updatedAt: Date.now() };
-    // Clear old chunks first then write new ones
     chrome.storage.sync.clear(() => {
       chrome.storage.sync.set(chunks);
     });
@@ -1847,9 +1846,34 @@ function syncToCloud() {
   }
 }
 
+// ── LOCAL FILE SYNC ─────────────────────────────
+let localSyncDebounce = null;
+
+function syncToLocal() {
+  // Debounce: wait 2s after last save before exporting
+  clearTimeout(localSyncDebounce);
+  localSyncDebounce = setTimeout(() => {
+    try {
+      const json = JSON.stringify(notes, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      chrome.downloads.download({
+        url,
+        filename: 'quicknote-sync.json',
+        conflictAction: 'overwrite',
+        saveAs: false
+      }, () => {
+        URL.revokeObjectURL(url);
+      });
+    } catch (e) {
+      console.warn('[QuickNote] Local sync export error:', e);
+    }
+  }, 2000);
+}
+
 function loadFromCloud() {
   return new Promise(resolve => {
-    if (!settings.cloudSyncEnabled) { resolve(); return; }
+    if (settings.syncMode !== 'cloud' && settings.syncMode !== 'both') { resolve(); return; }
     chrome.storage.sync.get(null, data => {
       if (!data.qn_sync_meta) { resolve(); return; }
       const { totalChunks, updatedAt } = data.qn_sync_meta;

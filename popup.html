@@ -329,9 +329,15 @@
             <span class="setting-hint">Move deleted notes to Trash instead of permanently deleting</span>
           </div>
           <div class="setting-group">
-            <label class="setting-label">Cloud Sync</label>
-            <input type="checkbox" class="setting-checkbox" id="settingCloudSync">
-            <span class="setting-hint">Sync notes across devices via Chrome account (100KB limit)</span>
+            <label class="setting-label">Sync Mode</label>
+            <select class="setting-select" id="settingSyncMode">
+              <option value="off">Off</option>
+              <option value="cloud">Cloud Only (Chrome Account)</option>
+              <option value="local">Local Only (File Export)</option>
+              <option value="both">Both Cloud & Local</option>
+            </select>
+            <span class="setting-hint">Cloud: syncs via Chrome account (100KB limit). Local: auto-exports to Downloads
+              for network sharing.</span>
           </div>
           <div class="setting-group">
             <label class="setting-label">Rich Text Toolbar</label>
