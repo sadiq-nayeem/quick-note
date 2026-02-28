@@ -29,7 +29,8 @@ let settings = {
   contextMenuBehavior: 'show',  // 'show' | 'background' - how to handle captured text
   globalShortcutEnabled: true, // Enable global shortcut
   noteLinkingEnabled: true,   // Enable cross-note references
-  tabPinEnabled: true         // Enable pin notes to sites
+  tabPinEnabled: true,        // Enable pin notes to sites
+  floatingButtonEnabled: true // Show floating button on pages with pinned notes
 };
 
 let currentTabHost = '';  // hostname of the active browser tab
@@ -342,6 +343,7 @@ const themeOptions = document.querySelectorAll('.theme-option');
 const settingsTabBtns = document.querySelectorAll('.settings-tab-btn');
 const settingsTabContents = document.querySelectorAll('.settings-tab-content');
 const settingTabPin = document.getElementById('settingTabPin');
+const settingFloatingBtn = document.getElementById('settingFloatingBtn');
 
 // Smart Rules UI
 const btnEditRules = document.getElementById('btnEditRules');
@@ -494,6 +496,7 @@ function openSettings() {
   settingGlobalShortcut.checked = settings.globalShortcutEnabled;
   settingNoteLinking.checked = settings.noteLinkingEnabled;
   settingTabPin.checked = settings.tabPinEnabled;
+  settingFloatingBtn.checked = settings.floatingButtonEnabled !== false;
 
   // Set active theme option
   const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
@@ -546,6 +549,7 @@ btnSaveSettings.addEventListener('click', () => {
   settings.globalShortcutEnabled = settingGlobalShortcut.checked;
   settings.noteLinkingEnabled = settingNoteLinking.checked;
   settings.tabPinEnabled = settingTabPin.checked;
+  settings.floatingButtonEnabled = settingFloatingBtn.checked;
   saveSettings();
   sortMode = settings.defaultSort;
   applySettings();
