@@ -48,6 +48,7 @@ let currentTabHost = '';  // hostname of the active browser tab
 
 // Rule being edited
 let editingRuleIndex = -1;
+let jsonEditorActive = false; // JSON editor mode toggle
 
 const COLORS = 7; // 0..6 — matches CSS .nc-0 … .nc-6
 const MAX_BODY = 5000; // character limit for warning
@@ -399,6 +400,12 @@ const btnCloseRules = document.getElementById('btnCloseRules');
 const rulesList = document.getElementById('rulesList');
 const btnAddRule = document.getElementById('btnAddRule');
 const btnSaveRules = document.getElementById('btnSaveRules');
+
+// JSON Editor UI
+const btnJsonToggle = document.getElementById('btnJsonToggle');
+const rulesJsonEditor = document.getElementById('rulesJsonEditor');
+const rulesJsonTextarea = document.getElementById('rulesJsonTextarea');
+const rulesJsonError = document.getElementById('rulesJsonError');
 
 // Rule Edit Modal
 const ruleEditOverlay = document.getElementById('ruleEditOverlay');
@@ -771,16 +778,49 @@ btnRandomColor.addEventListener('click', () => {
 
 // ── SMART RULES UI ───────────────────────────────
 btnEditRules.addEventListener('click', () => {
+  // Reset to visual mode when opening
+  jsonEditorActive = false;
+  btnJsonToggle.classList.remove('active');
+  rulesList.classList.remove('hidden');
+  btnAddRule.classList.remove('hidden');
+  rulesJsonEditor.classList.add('hidden');
+  rulesJsonError.classList.add('hidden');
   renderRulesList();
   rulesOverlay.classList.remove('hidden');
 });
 
 btnCloseRules.addEventListener('click', () => {
+  jsonEditorActive = false;
   rulesOverlay.classList.add('hidden');
 });
 
 rulesOverlay.addEventListener('click', e => {
-  if (e.target === rulesOverlay) rulesOverlay.classList.add('hidden');
+  if (e.target === rulesOverlay) {
+    jsonEditorActive = false;
+    rulesOverlay.classList.add('hidden');
+  }
+});
+
+// JSON Editor Toggle
+btnJsonToggle.addEventListener('click', () => {
+  jsonEditorActive = !jsonEditorActive;
+  btnJsonToggle.classList.toggle('active', jsonEditorActive);
+
+  if (jsonEditorActive) {
+    // Switch to JSON mode
+    rulesList.classList.add('hidden');
+    btnAddRule.classList.add('hidden');
+    rulesJsonEditor.classList.remove('hidden');
+    rulesJsonTextarea.value = JSON.stringify(settings.smartRules, null, 2);
+    rulesJsonError.classList.add('hidden');
+    rulesJsonTextarea.classList.remove('invalid');
+  } else {
+    // Switch back to visual mode
+    rulesList.classList.remove('hidden');
+    btnAddRule.classList.remove('hidden');
+    rulesJsonEditor.classList.add('hidden');
+    renderRulesList();
+  }
 });
 
 function renderRulesList() {
@@ -915,10 +955,46 @@ btnDeleteRule.addEventListener('click', () => {
 });
 
 btnSaveRules.addEventListener('click', () => {
-  settings.smartRules = [...settings.smartRules];
-  saveSettings();
-  rulesOverlay.classList.add('hidden');
-  showToast('📜 Rules saved!');
+  if (jsonEditorActive) {
+    // Save from JSON editor
+    const raw = rulesJsonTextarea.value.trim();
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) throw new Error('Must be a JSON array');
+      // Validate each rule
+      for (let i = 0; i < parsed.length; i++) {
+        const r = parsed[i];
+        if (typeof r !== 'object' || r === null) throw new Error(`Rule #${i + 1}: must be an object`);
+        if (!r.name || typeof r.name !== 'string') throw new Error(`Rule #${i + 1}: missing/invalid "name"`);
+        if (!r.pattern || typeof r.pattern !== 'string') throw new Error(`Rule #${i + 1}: missing/invalid "pattern"`);
+        // Validate regex
+        try { new RegExp(r.pattern); } catch { throw new Error(`Rule #${i + 1}: invalid regex "${r.pattern}"`); }
+        // Normalize optional fields
+        r.titleTemplate = r.titleTemplate || '';
+        r.commentTemplate = r.commentTemplate || '';
+        r.color = r.color !== undefined ? String(r.color) : '';
+        r.interval = r.interval ? parseInt(r.interval) : null;
+        r.enabled = r.enabled !== false;
+      }
+      settings.smartRules = parsed;
+      rulesJsonError.classList.add('hidden');
+      rulesJsonTextarea.classList.remove('invalid');
+      saveSettings();
+      jsonEditorActive = false;
+      rulesOverlay.classList.add('hidden');
+      showToast('📜 Rules saved from JSON!');
+    } catch (err) {
+      rulesJsonError.textContent = '⚠️ ' + err.message;
+      rulesJsonError.classList.remove('hidden');
+      rulesJsonTextarea.classList.add('invalid');
+      return;
+    }
+  } else {
+    settings.smartRules = [...settings.smartRules];
+    saveSettings();
+    rulesOverlay.classList.add('hidden');
+    showToast('📜 Rules saved!');
+  }
 });
 
 // ── REMINDER TOGGLE ───────────────────────────────

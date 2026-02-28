@@ -233,10 +233,22 @@
     <div class="rules-modal">
       <div class="rules-header">
         <h2>📜 Smart Rules Editor</h2>
-        <button class="rules-close" id="btnCloseRules">✕</button>
+        <div class="rules-header-actions">
+          <button class="rules-json-toggle" id="btnJsonToggle" title="Toggle JSON editor">{ } JSON</button>
+          <button class="rules-close" id="btnCloseRules">✕</button>
+        </div>
       </div>
       <div class="rules-body" id="rulesList">
         <!-- Rules will be rendered here -->
+      </div>
+      <!-- JSON Editor (hidden by default) -->
+      <div class="rules-json-editor hidden" id="rulesJsonEditor">
+        <div class="rules-json-hint">
+          Each rule:
+          <code>{ "name", "pattern", "titleTemplate", "commentTemplate", "color", "interval", "enabled" }</code>
+        </div>
+        <textarea class="rules-json-textarea" id="rulesJsonTextarea" spellcheck="false" placeholder="[]"></textarea>
+        <div class="rules-json-error hidden" id="rulesJsonError"></div>
       </div>
       <div class="rules-footer">
         <button class="btn-secondary" id="btnAddRule">＋ Add New Rule</button>
