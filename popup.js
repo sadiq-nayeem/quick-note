@@ -5,12 +5,15 @@
 // ── STATE ──────────────────────────────────────
 let notes = [];
 let trash = [];
+let folders = [];           // Array of folder objects: {id, name}
+let activeFolderFilter = '';// currently filtered folder ID
 let editingId = null;
 let deleteId = null;
 let searchMode = 'normal';  // 'normal' | 'strict' | 'regex'
 let currentView = 'new';    // 'new' | 'search' | 'list'
 let sortMode = 'newest';  // 'newest' | 'oldest' | 'az' | 'color'
 let activeTag = null;      // currently filtered tag
+let searchFilters = { startDate: '', endDate: '', color: 'any', tag: '', hasReminder: false };
 let selectedColor = null;   // manually selected color
 let pendingDelete = null;   // for undo delete
 let undoTimer = null;       // undo timeout timer
@@ -35,8 +38,10 @@ let settings = {
   autoTagDomain: true,         // Auto-add domain tag when creating notes
   contextMenuAutoPin: true,    // Auto-pin to site when saving via context menu
   trashEnabled: true,          // Move deleted notes to trash
+  foldersEnabled: true,        // Enable folders/notebooks
   syncMode: 'off',             // 'off' | 'cloud' | 'local' | 'both'
-  richEditorEnabled: true      // Show markdown toolbar
+  richEditorEnabled: true,     // Show markdown toolbar
+  noteSharingEnabled: true     // Show share action button on notes
 };
 
 let currentTabHost = '';  // hostname of the active browser tab
@@ -353,8 +358,19 @@ const settingFloatingBtn = document.getElementById('settingFloatingBtn');
 const settingAutoTagDomain = document.getElementById('settingAutoTagDomain');
 const settingContextMenuAutoPin = document.getElementById('settingContextMenuAutoPin');
 const settingTrash = document.getElementById('settingTrash');
+const settingFolders = document.getElementById('settingFolders');
+const btnManageFolders = document.getElementById('btnManageFolders');
 const settingSyncMode = document.getElementById('settingSyncMode');
 const settingRichEditor = document.getElementById('settingRichEditor');
+const settingNoteSharing = document.getElementById('settingNoteSharing');
+
+// Share UI
+const shareOverlay = document.getElementById('shareOverlay');
+const btnCloseShare = document.getElementById('btnCloseShare');
+const btnShareMd = document.getElementById('btnShareMd');
+const btnShareHtml = document.getElementById('btnShareHtml');
+const btnShareImg = document.getElementById('btnShareImg');
+let shareNoteId = null;
 
 // Trash UI
 const viewTrash = document.getElementById('viewTrash');
@@ -362,6 +378,16 @@ const btnTrash = document.getElementById('btnTrash');
 const trashNotesEl = document.getElementById('trashNotes');
 const trashEmptyState = document.getElementById('trashEmptyState');
 const btnEmptyTrash = document.getElementById('btnEmptyTrash');
+
+// Folders UI
+const folderSelectGroup = document.getElementById('folderSelectGroup');
+const noteFolder = document.getElementById('noteFolder');
+const folderBar = document.getElementById('folderBar');
+const folderManagerOverlay = document.getElementById('folderManagerOverlay');
+const btnCloseFolderManager = document.getElementById('btnCloseFolderManager');
+const newFolderName = document.getElementById('newFolderName');
+const btnAddFolder = document.getElementById('btnAddFolder');
+const folderManagerList = document.getElementById('folderManagerList');
 
 // Rich Editor Toolbar
 const mdToolbar = document.getElementById('mdToolbar');
@@ -422,6 +448,16 @@ const modeBtns = document.querySelectorAll('.mode-btn');
 const searchResults = document.getElementById('searchResults');
 const searchError = document.getElementById('searchError');
 
+// Search Filters UI
+const btnToggleFilters = document.getElementById('btnToggleFilters');
+const searchFiltersPanel = document.getElementById('searchFiltersPanel');
+const filterDateStart = document.getElementById('filterDateStart');
+const filterDateEnd = document.getElementById('filterDateEnd');
+const filterColorOptions = document.getElementById('filterColorOptions');
+const filterTagSelect = document.getElementById('filterTagSelect');
+const filterHasReminder = document.getElementById('filterHasReminder');
+const btnClearFilters = document.getElementById('btnClearFilters');
+
 const allNotes = document.getElementById('allNotes');
 const emptyState = document.getElementById('emptyState');
 
@@ -449,9 +485,10 @@ const toastUndo = document.getElementById('toastUndo');
 // ── STORAGE ────────────────────────────────────
 function loadNotes() {
   return new Promise(resolve => {
-    chrome.storage.local.get(['qn_notes', 'qn_theme', 'qn_settings', '_pendingNote', 'qn_trash'], data => {
+    chrome.storage.local.get(['qn_notes', 'qn_theme', 'qn_settings', '_pendingNote', 'qn_trash', 'qn_folders'], data => {
       notes = data.qn_notes || [];
       trash = data.qn_trash || [];
+      folders = data.qn_folders || [];
 
       // Load theme
       if (data.qn_theme === 'dark') {
@@ -495,6 +532,10 @@ function saveTrash() {
   chrome.storage.local.set({ qn_trash: trash });
 }
 
+function saveFolders() {
+  chrome.storage.local.set({ qn_folders: folders });
+}
+
 function saveSettings() {
   chrome.storage.local.set({ qn_settings: settings });
 }
@@ -511,6 +552,12 @@ function applySettings() {
   });
   // Toolbar visibility
   mdToolbar.classList.toggle('hidden', !settings.richEditorEnabled);
+
+  // Folders UI visibility
+  const folderManageGroup = document.getElementById('folderManageGroup');
+  if (folderManageGroup) folderManageGroup.classList.toggle('hidden', !settings.foldersEnabled);
+  if (folderSelectGroup) folderSelectGroup.classList.toggle('hidden', !settings.foldersEnabled);
+  if (folderBar) folderBar.classList.toggle('hidden', !settings.foldersEnabled);
 }
 
 // ── SETTINGS MODAL ───────────────────────────────
@@ -531,8 +578,10 @@ function openSettings() {
   settingAutoTagDomain.checked = settings.autoTagDomain !== false;
   settingContextMenuAutoPin.checked = settings.contextMenuAutoPin !== false;
   settingTrash.checked = settings.trashEnabled !== false;
+  settingFolders.checked = settings.foldersEnabled !== false;
   settingSyncMode.value = settings.syncMode || 'off';
   settingRichEditor.checked = settings.richEditorEnabled !== false;
+  if (settingNoteSharing) settingNoteSharing.checked = settings.noteSharingEnabled !== false;
 
   // Set active theme option
   const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
@@ -589,8 +638,10 @@ btnSaveSettings.addEventListener('click', () => {
   settings.autoTagDomain = settingAutoTagDomain.checked;
   settings.contextMenuAutoPin = settingContextMenuAutoPin.checked;
   settings.trashEnabled = settingTrash.checked;
+  settings.foldersEnabled = settingFolders.checked;
   settings.syncMode = settingSyncMode.value;
   settings.richEditorEnabled = settingRichEditor.checked;
+  if (settingNoteSharing) settings.noteSharingEnabled = settingNoteSharing.checked;
   // Show/hide toolbar
   mdToolbar.classList.toggle('hidden', !settings.richEditorEnabled);
   saveSettings();
@@ -945,7 +996,7 @@ function showView(name) {
   sortBar.classList.toggle('hidden', name !== 'list');
 
   if (name === 'list') { renderAllNotes(); renderTagSidebar(); }
-  if (name === 'search') { searchInput.focus(); renderSearch(); }
+  if (name === 'search') { populateFilterTagSelect(); searchInput.focus(); renderSearch(); }
   if (name === 'trash') { renderTrash(); }
   if (name === 'new' && !editingId && !hasPendingNote) {
     resetForm();
@@ -977,6 +1028,7 @@ function resetForm() {
   noteTitle.value = '';
   noteBody.value = '';
   noteComment.value = '';
+  noteFolder.value = '';
   charCount.textContent = '0 chars · 0 words';
   btnSave.textContent = 'Save →';
   btnCancelEdit.style.display = 'none';
@@ -1082,6 +1134,7 @@ function saveNote() {
 
   const title = noteTitle.value.trim();
   const comment = noteComment.value.trim();
+  const folder = noteFolder.value || null;
   const tags = extractTags(body);
   const references = extractReferences(body);
 
@@ -1110,7 +1163,7 @@ function saveNote() {
       const existing = notes[idx];
       notes[idx] = {
         ...existing,
-        title, body, comment, tags,
+        title, body, comment, folder, tags,
         color: selectedColor !== null ? selectedColor : existing.color,
         reminder,
         // Keep existing recurring interval unless manually changed
@@ -1137,7 +1190,7 @@ function saveNote() {
     showToast('✏️ Note updated!');
   } else {
     const newNote = {
-      id: uid(), title, body, comment, tags,
+      id: uid(), title, body, comment, folder, tags,
       color: selectedColor !== null ? selectedColor : randColor(),
       pinned: false,
       favorite: false,
@@ -1202,20 +1255,24 @@ function shakeEl(el) {
 // ── RENDER CARDS ────────────────────────────────
 function sortedNotes(list) {
   return [...list].sort((a, b) => {
-    // Pinned notes always first
-    if (a.pinned && !b.pinned) return -1;
-    if (!a.pinned && b.pinned) return 1;
+    // Pinned notes always first (unless in custom mode, where absolute array order reigns)
+    if (sortMode !== 'custom') {
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
 
-    // Site-pinned notes for current tab float next
-    if (settings.tabPinEnabled && currentTabHost) {
-      const aMatch = a.pinnedUrl === currentTabHost;
-      const bMatch = b.pinnedUrl === currentTabHost;
-      if (aMatch && !bMatch) return -1;
-      if (!aMatch && bMatch) return 1;
+      // Site-pinned notes for current tab float next
+      if (settings.tabPinEnabled && currentTabHost) {
+        const aMatch = a.pinnedUrl === currentTabHost;
+        const bMatch = b.pinnedUrl === currentTabHost;
+        if (aMatch && !bMatch) return -1;
+        if (!aMatch && bMatch) return 1;
+      }
     }
 
     // Then apply selected sort mode
     switch (sortMode) {
+      case 'custom':
+        return notes.findIndex(n => n.id === a.id) - notes.findIndex(n => n.id === b.id);
       case 'oldest':
         return a.updatedAt - b.updatedAt;
       case 'az':
@@ -1236,8 +1293,8 @@ function buildCard(note, query = '', mode = 'normal') {
   card.className = `note-card nc-${note.color}`;
   card.dataset.id = note.id;
 
-  // Make pinned notes draggable for reordering
-  if (note.pinned) {
+  // Make notes draggable for reordering if pinned or in custom sort mode
+  if (note.pinned || sortMode === 'custom') {
     card.draggable = true;
     card.dataset.draggable = 'true';
   }
@@ -1249,6 +1306,7 @@ function buildCard(note, query = '', mode = 'normal') {
   const pinBadge = note.pinned ? `<span class="note-pin-badge">📌</span>` : '';
   const favBadge = note.favorite ? `<span class="note-fav-badge">⭐</span>` : '';
   const remBadge = note.reminder ? `<span class="note-rem-badge">🔔</span>` : '';
+  const folderBadge = settings.foldersEnabled && note.folder ? `<div class="folder-badge">📁 ${escapeHtml(folders.find(f => f.id === note.folder)?.name || 'Unknown')}</div>` : '';
   const siteBadge = note.pinnedUrl ? `<span class="note-site-badge" title="Pinned to ${escapeHtml(note.pinnedUrl)}">🔗</span>` : '';
   const isSiteMatch = settings.tabPinEnabled && note.pinnedUrl && note.pinnedUrl === currentTabHost;
   const tagsHtml = note.tags && note.tags.length
@@ -1264,7 +1322,10 @@ function buildCard(note, query = '', mode = 'normal') {
     ? `<button class="note-action-btn" data-action="sitepin" title="${note.pinnedUrl === currentTabHost ? 'Unpin from this site' : 'Pin to this site'}">${note.pinnedUrl === currentTabHost ? '🔗' : '🔗'}</button>`
     : '';
 
+  const shareBtn = settings.noteSharingEnabled ? `<button class="note-action-btn" data-action="share" title="Share/Export">📤</button>` : '';
+
   card.innerHTML = `
+    ${folderBadge}
     ${pinBadge}
     ${favBadge}
     ${remBadge}
@@ -1280,6 +1341,7 @@ function buildCard(note, query = '', mode = 'normal') {
         <button class="note-action-btn" data-action="pin"  title="${note.pinned ? 'Unpin' : 'Pin'}">${note.pinned ? '📌' : '📍'}</button>
         <button class="note-action-btn" data-action="favorite" title="${note.favorite ? 'Unfavorite' : 'Favorite'}">${note.favorite ? '⭐' : '☆'}</button>
         ${sitePinBtn}
+        ${shareBtn}
         <button class="note-action-btn" data-action="duplicate" title="Duplicate">📄</button>
         <button class="note-action-btn" data-action="copy" title="Copy body">📋</button>
         <button class="note-action-btn" data-action="edit" title="Edit">✏️</button>
@@ -1299,8 +1361,8 @@ function buildCard(note, query = '', mode = 'normal') {
     openViewModal(note.id);
   });
 
-  // Drag and drop for pinned notes
-  if (note.pinned) {
+  // Drag and drop for reordering
+  if (note.pinned || sortMode === 'custom') {
     card.addEventListener('dragstart', e => {
       card.classList.add('dragging');
       e.dataTransfer.setData('text/plain', note.id);
@@ -1328,7 +1390,7 @@ function buildCard(note, query = '', mode = 'normal') {
       card.classList.remove('drag-over');
       const draggedId = e.dataTransfer.getData('text/plain');
       if (draggedId && draggedId !== note.id) {
-        reorderPinnedNotes(draggedId, note.id);
+        reorderNotes(draggedId, note.id);
       }
     });
   }
@@ -1339,8 +1401,13 @@ function buildCard(note, query = '', mode = 'normal') {
 function renderAllNotes() {
   allNotes.innerHTML = '';
   let filtered = notes;
+
+  if (settings.foldersEnabled && activeFolderFilter) {
+    filtered = filtered.filter(n => n.folder === activeFolderFilter);
+  }
+
   if (activeTag) {
-    filtered = notes.filter(n => (n.tags || []).includes(activeTag));
+    filtered = filtered.filter(n => (n.tags || []).includes(activeTag));
   }
   const sorted = sortedNotes(filtered);
   if (sorted.length === 0) {
@@ -1416,14 +1483,106 @@ function renderSearch() {
     }
   }
 
-  const filtered = sortedNotes(notes).filter(n => matchesSearch(n, q, searchMode));
+  let filtered = sortedNotes(notes).filter(n => matchesSearch(n, q, searchMode));
+  filtered = applySearchFilters(filtered);
   filtered.forEach(n => searchResults.appendChild(buildCard(n, q, searchMode)));
+}
+
+function applySearchFilters(list) {
+  let result = list;
+  if (searchFilters.startDate) {
+    const start = new Date(searchFilters.startDate).getTime();
+    result = result.filter(n => (n.createdAt >= start || n.updatedAt >= start));
+  }
+  if (searchFilters.endDate) {
+    const end = new Date(searchFilters.endDate).setHours(23, 59, 59, 999);
+    result = result.filter(n => (n.createdAt <= end || n.updatedAt <= end));
+  }
+  if (searchFilters.color !== 'any') {
+    result = result.filter(n => n.color == searchFilters.color);
+  }
+  if (searchFilters.tag) {
+    result = result.filter(n => (n.tags || []).includes(searchFilters.tag));
+  }
+  if (searchFilters.hasReminder) {
+    result = result.filter(n => !!n.reminder);
+  }
+  return result;
+}
+
+// ── SEARCH FILTERS EVENTS ───────────────────────
+if (btnToggleFilters) {
+  btnToggleFilters.addEventListener('click', () => {
+    btnToggleFilters.classList.toggle('active');
+    searchFiltersPanel.classList.toggle('hidden');
+  });
+}
+
+function updateSearchFilters() {
+  searchFilters.startDate = filterDateStart.value;
+  searchFilters.endDate = filterDateEnd.value;
+  searchFilters.tag = filterTagSelect.value;
+  searchFilters.hasReminder = filterHasReminder.checked;
+  renderSearch();
+}
+
+if (filterDateStart) filterDateStart.addEventListener('change', updateSearchFilters);
+if (filterDateEnd) filterDateEnd.addEventListener('change', updateSearchFilters);
+if (filterTagSelect) filterTagSelect.addEventListener('change', updateSearchFilters);
+if (filterHasReminder) filterHasReminder.addEventListener('change', updateSearchFilters);
+
+if (filterColorOptions) {
+  filterColorOptions.addEventListener('click', e => {
+    if (e.target.tagName !== 'BUTTON') return;
+    const btns = filterColorOptions.querySelectorAll('.color-btn');
+    btns.forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    searchFilters.color = e.target.dataset.filterColor;
+    renderSearch();
+  });
+}
+
+if (btnClearFilters) {
+  btnClearFilters.addEventListener('click', () => {
+    filterDateStart.value = '';
+    filterDateEnd.value = '';
+    filterColorOptions.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+    filterColorOptions.querySelector('[data-filter-color="any"]').classList.add('active');
+    filterTagSelect.value = '';
+    filterHasReminder.checked = false;
+
+    searchFilters = { startDate: '', endDate: '', color: 'any', tag: '', hasReminder: false };
+    renderSearch();
+  });
+}
+
+function populateFilterTagSelect() {
+  if (!filterTagSelect) return;
+  const currentVal = filterTagSelect.value;
+  filterTagSelect.innerHTML = '<option value="">Any Tag</option>';
+  const tagSet = new Set();
+  notes.forEach(n => (n.tags || []).forEach(t => tagSet.add(t)));
+  Array.from(tagSet).sort().forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t;
+    opt.textContent = t;
+    filterTagSelect.appendChild(opt);
+  });
+  if (tagSet.has(currentVal)) {
+    filterTagSelect.value = currentVal;
+  }
 }
 
 // ── CARD ACTIONS ────────────────────────────────
 function handleCardAction(action, id) {
   const note = notes.find(n => n.id === id);
   if (!note) return;
+
+  if (action === 'share') {
+    shareNoteId = id;
+    shareOverlay.classList.remove('hidden');
+    return;
+  }
 
   if (action === 'pin') {
     note.pinned = !note.pinned;
@@ -1481,6 +1640,7 @@ function handleCardAction(action, id) {
     noteBody.value = note.body || '';
     noteComment.value = note.comment || '';
     charCount.textContent = countWordsChars(note.body || '');
+    noteFolder.value = note.folder || '';
     btnSave.textContent = 'Update →';
     btnCancelEdit.style.display = '';
 
@@ -1547,8 +1707,100 @@ function handleCardAction(action, id) {
   }
 }
 
-// ── REORDER PINNED NOTES ──────────────────────────
-function reorderPinnedNotes(draggedId, targetId) {
+// ── NOTE SHARING ────────────────────────────────
+if (btnCloseShare) {
+  btnCloseShare.addEventListener('click', () => {
+    shareOverlay.classList.add('hidden');
+  });
+}
+
+if (btnShareMd) {
+  btnShareMd.addEventListener('click', () => {
+    const note = notes.find(n => n.id === shareNoteId);
+    if (!note) return;
+    const text = (note.title ? `# ${note.title}\n\n` : '') + note.body;
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('📋 Markdown copied!');
+      shareOverlay.classList.add('hidden');
+    });
+  });
+}
+
+if (btnShareHtml) {
+  btnShareHtml.addEventListener('click', () => {
+    const note = notes.find(n => n.id === shareNoteId);
+    if (!note) return;
+    const html = (note.title ? `<h2>${escapeHtml(note.title)}</h2>` : '') + parseMarkdown(note.body);
+    const blob = new Blob([html], { type: 'text/html' });
+    const clipboardItem = new ClipboardItem({ 'text/html': blob });
+    navigator.clipboard.write([clipboardItem]).then(() => {
+      showToast('📋 Formatted HTML copied!');
+      shareOverlay.classList.add('hidden');
+    }).catch(err => {
+      console.error(err);
+      showToast('⚠️ Failed to copy HTML');
+    });
+  });
+}
+
+if (btnShareImg) {
+  btnShareImg.addEventListener('click', () => {
+    const note = notes.find(n => n.id === shareNoteId);
+    if (!note) return;
+
+    // We use an SVG foreignObject hack to render HTML into a canvas.
+    const htmlWidth = 400;
+    const htmlContent = `
+      <div xmlns="http://www.w3.org/1999/xhtml" style="padding: 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #fff; border-radius: 12px; box-sizing: border-box; font-size: 14px; width: ${htmlWidth}px; color: #1f2937;">
+        ${note.title ? `<h2 style="margin-top:0; font-size:18px;">${escapeHtml(note.title)}</h2>` : ''}
+        <div style="line-height: 1.5;">${parseMarkdown(note.body)}</div>
+        ${note.tags && note.tags.length ? `<div style="margin-top: 16px; display:flex; gap: 4px;">${note.tags.map(t => `<span style="background:#f3f4f6; padding: 2px 6px; border-radius:4px; font-size: 11px;">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+      </div>
+    `;
+
+    // Estimate height (fallback 600)
+    const estHeight = 600;
+
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="${htmlWidth}" height="${estHeight}">
+        <foreignObject width="100%" height="100%">
+          ${htmlContent}
+        </foreignObject>
+      </svg>
+    `;
+
+    const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = htmlWidth;
+      canvas.height = estHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#f3f4f6'; // background paper color
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+
+      canvas.toBlob(blob => {
+        const urlObj = URL.createObjectURL(blob);
+        chrome.downloads.download({
+          url: urlObj,
+          filename: `quicknote-${note.id}.png`,
+          saveAs: false
+        }, () => {
+          showToast('🖼️ Image saved to Downloads!');
+          shareOverlay.classList.add('hidden');
+          URL.revokeObjectURL(urlObj);
+        });
+      }, 'image/png');
+    };
+    img.src = url;
+  });
+}
+
+// ── REORDER NOTES ──────────────────────────
+function reorderNotes(draggedId, targetId) {
   const draggedIdx = notes.findIndex(n => n.id === draggedId);
   const targetIdx = notes.findIndex(n => n.id === targetId);
   if (draggedIdx === -1 || targetIdx === -1) return;
@@ -1559,6 +1811,7 @@ function reorderPinnedNotes(draggedId, targetId) {
 
   saveNotes();
   renderAllNotes();
+  if (currentView === 'search') renderSearch();
 }
 
 // ── VIEW NOTE MODAL ───────────────────────────────
@@ -1904,6 +2157,121 @@ function loadFromCloud() {
   });
 }
 
+// ── FOLDERS LOGIC ─────────────────────────────────
+
+function populateFolderSelect() {
+  const currentVal = noteFolder.value;
+  noteFolder.innerHTML = '<option value="">None</option>';
+  folders.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f.id;
+    opt.textContent = f.name;
+    noteFolder.appendChild(opt);
+  });
+  if (currentVal && folders.find(f => f.id === currentVal)) {
+    noteFolder.value = currentVal;
+  }
+}
+
+function renderFolderBar() {
+  if (!folderBar) return;
+  folderBar.innerHTML = `<button class="folder-btn ${activeFolderFilter === '' ? 'active' : ''}" data-folder="">All Notes</button>`;
+  folders.forEach(f => {
+    const btn = document.createElement('button');
+    btn.className = `folder-btn ${activeFolderFilter === f.id ? 'active' : ''}`;
+    btn.dataset.folder = f.id;
+    btn.textContent = f.name;
+    folderBar.appendChild(btn);
+  });
+}
+
+if (folderBar) {
+  folderBar.addEventListener('click', e => {
+    if (e.target.classList.contains('folder-btn')) {
+      activeFolderFilter = e.target.dataset.folder;
+      renderFolderBar(); // update active class
+      renderAllNotes();
+    }
+  });
+}
+
+// Manage Folders UI
+if (btnManageFolders) {
+  btnManageFolders.addEventListener('click', () => {
+    renderFolderManager();
+    folderManagerOverlay.classList.remove('hidden');
+  });
+}
+
+if (btnCloseFolderManager) {
+  btnCloseFolderManager.addEventListener('click', () => {
+    folderManagerOverlay.classList.add('hidden');
+  });
+}
+
+function renderFolderManager() {
+  folderManagerList.innerHTML = '';
+  if (folders.length === 0) {
+    folderManagerList.innerHTML = '<div class="hint" style="text-align:center;">No folders yet.</div>';
+    return;
+  }
+  folders.forEach(f => {
+    const el = document.createElement('div');
+    el.className = 'folder-item';
+    el.innerHTML = `
+      <span class="folder-item-name">${escapeHtml(f.name)}</span>
+      <button class="btn-danger btn-sm" data-delete-folder="${f.id}">✕</button>
+    `;
+    folderManagerList.appendChild(el);
+  });
+}
+
+if (btnAddFolder) {
+  btnAddFolder.addEventListener('click', () => {
+    const name = newFolderName.value.trim();
+    if (!name) return;
+    if (folders.find(f => f.name.toLowerCase() === name.toLowerCase())) {
+      showToast('⚠️ Folder already exists');
+      return;
+    }
+    const id = 'f_' + Date.now();
+    folders.push({ id, name });
+    saveFolders();
+    newFolderName.value = '';
+    renderFolderManager();
+    populateFolderSelect();
+    renderFolderBar();
+    showToast('📁 Folder created');
+  });
+}
+
+if (folderManagerList) {
+  folderManagerList.addEventListener('click', e => {
+    if (e.target.dataset.deleteFolder) {
+      const id = e.target.dataset.deleteFolder;
+      if (confirm('Delete this folder? Notes in it will be uncategorized.')) {
+        folders = folders.filter(f => f.id !== id);
+        // Clear folder from notes
+        let updated = false;
+        notes.forEach(n => {
+          if (n.folder === id) {
+            n.folder = null;
+            updated = true;
+          }
+        });
+        if (updated) saveNotes();
+
+        saveFolders();
+        if (activeFolderFilter === id) activeFolderFilter = '';
+        renderFolderManager();
+        populateFolderSelect();
+        renderFolderBar();
+        renderAllNotes();
+      }
+    }
+  });
+}
+
 // ── INIT ─────────────────────────────────────────
 // Detect active tab hostname
 try {
@@ -1914,6 +2282,8 @@ try {
       } catch { /* ignore invalid URLs like chrome:// */ }
     }
     loadNotes().then(() => {
+      populateFolderSelect();
+      renderFolderBar();
       updateNoteCount();
       // Load cloud data if sync enabled
       loadFromCloud().then(() => {

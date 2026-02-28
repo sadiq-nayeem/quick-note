@@ -41,6 +41,7 @@
     <button class="sort-btn" data-sort="oldest">Oldest</button>
     <button class="sort-btn" data-sort="az">A→Z</button>
     <button class="sort-btn" data-sort="color">Color</button>
+    <button class="sort-btn" data-sort="custom">Custom</button>
   </div>
 
   <!-- ══ VIEW: NEW / EDIT NOTE ══ -->
@@ -100,6 +101,13 @@
       </div>
     </div>
 
+    <div class="form-group" id="folderSelectGroup">
+      <span class="color-label">Folder:</span>
+      <select id="noteFolder" class="input small">
+        <option value="">None</option>
+      </select>
+    </div>
+
     <!-- Color Picker -->
     <div class="color-picker">
       <span class="color-label">Color:</span>
@@ -132,7 +140,47 @@
       <button class="mode-btn active" data-mode="normal">Normal</button>
       <button class="mode-btn" data-mode="strict">Aa Strict</button>
       <button class="mode-btn" data-mode="regex">.* Regex</button>
+      <button class="mode-btn" id="btnToggleFilters" title="Toggle Filters">⚙ Filters</button>
     </div>
+
+    <!-- Search Filters Panel -->
+    <div class="search-filters hidden" id="searchFiltersPanel">
+      <div class="filter-group">
+        <label>Date Range:</label>
+        <div style="display:flex; gap: 4px; align-items: center;">
+          <input type="date" id="filterDateStart" class="input small"> -
+          <input type="date" id="filterDateEnd" class="input small">
+        </div>
+      </div>
+      <div class="filter-group">
+        <label>Color:</label>
+        <div class="color-options" id="filterColorOptions">
+          <button class="color-btn active" data-filter-color="any" title="Any color">⨯</button>
+          <button class="color-btn c-0" data-filter-color="0"></button>
+          <button class="color-btn c-1" data-filter-color="1"></button>
+          <button class="color-btn c-2" data-filter-color="2"></button>
+          <button class="color-btn c-3" data-filter-color="3"></button>
+          <button class="color-btn c-4" data-filter-color="4"></button>
+          <button class="color-btn c-5" data-filter-color="5"></button>
+          <button class="color-btn c-6" data-filter-color="6"></button>
+        </div>
+      </div>
+      <div class="filter-group">
+        <label>Tag:</label>
+        <select id="filterTagSelect" class="input small">
+          <option value="">Any Tag</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>
+          <input type="checkbox" id="filterHasReminder"> Has Reminder
+        </label>
+      </div>
+      <div style="text-align: right;">
+        <button class="btn-secondary btn-sm" id="btnClearFilters">Clear Filters</button>
+      </div>
+    </div>
+
     <div class="search-error hidden" id="searchError">⚠ Invalid regex</div>
     <div class="notes-list" id="searchResults"></div>
   </div>
@@ -145,6 +193,10 @@
         <div class="tag-list" id="tagList"></div>
       </div>
       <div class="main-content">
+        <!-- Folder filter bar -->
+        <div class="folder-bar hidden" id="folderBar">
+          <button class="folder-btn active" data-folder="">All Notes</button>
+        </div>
         <div class="notes-list" id="allNotes"></div>
       </div>
     </div>
@@ -189,6 +241,22 @@
       <div class="rules-footer">
         <button class="btn-secondary" id="btnAddRule">＋ Add New Rule</button>
         <button class="btn-primary" id="btnSaveRules">Save Rules</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SHARE MODAL ── -->
+  <div class="rule-edit-overlay hidden" id="shareOverlay">
+    <div class="rule-edit-modal">
+      <div class="rule-edit-header">
+        <h3>📤 Share Note</h3>
+        <button class="rule-edit-close" id="btnCloseShare">✕</button>
+      </div>
+      <div class="rule-edit-body" style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn-secondary" id="btnShareMd" style="justify-content:flex-start">📝 Copy as Markdown</button>
+        <button class="btn-secondary" id="btnShareHtml" style="justify-content:flex-start">📄 Copy as Formatted Text
+          (HTML)</button>
+        <button class="btn-secondary" id="btnShareImg" style="justify-content:flex-start">🖼️ Export as Image</button>
       </div>
     </div>
   </div>
@@ -277,6 +345,27 @@
     </div>
   </div>
 
+  <!-- ── FOLDERS EDITOR MODAL ── -->
+  <div class="rule-edit-overlay hidden" id="folderManagerOverlay">
+    <div class="rule-edit-modal">
+      <div class="rule-edit-header">
+        <h3>Manage Folders</h3>
+        <button class="rule-edit-close" id="btnCloseFolderManager">✕</button>
+      </div>
+      <div class="rule-edit-body">
+        <div class="form-group">
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="newFolderName" class="input" placeholder="New folder name..." maxlength="50">
+            <button class="btn-primary" id="btnAddFolder">Add</button>
+          </div>
+        </div>
+        <div class="folder-manager-list" id="folderManagerList">
+          <!-- Folder items go here -->
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── SETTINGS MODAL ── -->
   <div class="settings-overlay hidden" id="settingsOverlay">
     <div class="settings-modal">
@@ -343,6 +432,11 @@
             <label class="setting-label">Rich Text Toolbar</label>
             <input type="checkbox" class="setting-checkbox" id="settingRichEditor">
             <span class="setting-hint">Show formatting toolbar above the note editor</span>
+          </div>
+          <div class="setting-group">
+            <label class="setting-label">Note Sharing</label>
+            <input type="checkbox" class="setting-checkbox" id="settingNoteSharing">
+            <span class="setting-hint">Enable share menu on notes</span>
           </div>
           <div class="setting-group danger-zone">
             <label class="setting-label">Danger Zone</label>
