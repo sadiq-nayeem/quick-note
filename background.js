@@ -53,12 +53,22 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     if (settings.contextMenuBehavior === 'background') {
       // Save directly in background without opening popup
       const notes = data.qn_notes || [];
+      let hostname = '';
+      try { hostname = new URL(tab.url).hostname; } catch { }
+
+      const tags = extractTagsFromText(info.selectionText);
+      // Auto-tag with domain
+      if (settings.autoTagDomain !== false && hostname) {
+        const domainTag = `#${hostname.replace(/\./g, '-')}`;
+        if (!tags.includes(domainTag)) tags.push(domainTag);
+      }
+
       const newNote = {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-        title: '', // Will use first 50 chars of selection as title if no title
+        title: '',
         body: info.selectionText,
         comment: 'Captured from selection',
-        tags: extractTagsFromText(info.selectionText),
+        tags,
         color: Math.floor(Math.random() * 7),
         pinned: false,
         favorite: false,
@@ -69,6 +79,12 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         createdAt: Date.now(),
         updatedAt: Date.now()
       };
+
+      // Auto-pin to site
+      if (settings.contextMenuAutoPin !== false && hostname) {
+        newNote.pinnedUrl = hostname;
+      }
+
       // Use first 50 chars as title if body is longer
       if (newNote.body.length > 50) {
         newNote.title = newNote.body.substring(0, 47) + '...';
@@ -100,12 +116,22 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === 'quickCapture') {
     const data = await chrome.storage.local.get(['qn_settings', 'qn_notes']);
     if (data.qn_settings?.contextMenuEnabled) {
+      const settings = data.qn_settings || {};
       const notes = data.qn_notes || [];
+      let hostname = '';
+      try { hostname = new URL(tab.url).hostname; } catch { }
+
+      const tags = [];
+      if (settings.autoTagDomain !== false && hostname) {
+        tags.push(`#${hostname.replace(/\./g, '-')}`);
+      }
+
       const newNote = {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
         title: tab.title,
         body: tab.url,
         comment: 'Captured from: ' + new Date().toLocaleString(),
+        tags,
         color: Math.floor(Math.random() * 7),
         pinned: false,
         favorite: false,
@@ -116,6 +142,11 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         createdAt: Date.now(),
         updatedAt: Date.now()
       };
+
+      if (settings.contextMenuAutoPin !== false && hostname) {
+        newNote.pinnedUrl = hostname;
+      }
+
       notes.unshift(newNote);
       await chrome.storage.local.set({ qn_notes: notes });
       chrome.notifications.create({

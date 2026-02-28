@@ -30,7 +30,9 @@ let settings = {
   globalShortcutEnabled: true, // Enable global shortcut
   noteLinkingEnabled: true,   // Enable cross-note references
   tabPinEnabled: true,        // Enable pin notes to sites
-  floatingButtonEnabled: true // Show floating button on pages with pinned notes
+  floatingButtonEnabled: true, // Show floating button on pages with pinned notes
+  autoTagDomain: true,         // Auto-add domain tag when creating notes
+  contextMenuAutoPin: true     // Auto-pin to site when saving via context menu
 };
 
 let currentTabHost = '';  // hostname of the active browser tab
@@ -344,6 +346,8 @@ const settingsTabBtns = document.querySelectorAll('.settings-tab-btn');
 const settingsTabContents = document.querySelectorAll('.settings-tab-content');
 const settingTabPin = document.getElementById('settingTabPin');
 const settingFloatingBtn = document.getElementById('settingFloatingBtn');
+const settingAutoTagDomain = document.getElementById('settingAutoTagDomain');
+const settingContextMenuAutoPin = document.getElementById('settingContextMenuAutoPin');
 
 // Smart Rules UI
 const btnEditRules = document.getElementById('btnEditRules');
@@ -497,6 +501,8 @@ function openSettings() {
   settingNoteLinking.checked = settings.noteLinkingEnabled;
   settingTabPin.checked = settings.tabPinEnabled;
   settingFloatingBtn.checked = settings.floatingButtonEnabled !== false;
+  settingAutoTagDomain.checked = settings.autoTagDomain !== false;
+  settingContextMenuAutoPin.checked = settings.contextMenuAutoPin !== false;
 
   // Set active theme option
   const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
@@ -550,6 +556,8 @@ btnSaveSettings.addEventListener('click', () => {
   settings.noteLinkingEnabled = settingNoteLinking.checked;
   settings.tabPinEnabled = settingTabPin.checked;
   settings.floatingButtonEnabled = settingFloatingBtn.checked;
+  settings.autoTagDomain = settingAutoTagDomain.checked;
+  settings.contextMenuAutoPin = settingContextMenuAutoPin.checked;
   saveSettings();
   sortMode = settings.defaultSort;
   applySettings();
@@ -1096,12 +1104,20 @@ function saveNote() {
       pinned: false,
       favorite: false,
       reminder,
-      recurringInterval: null, // Will be set if applicable
+      recurringInterval: null,
       references,
       linkedNotes: [],
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
+
+    // Auto-add domain tag
+    if (settings.autoTagDomain && currentTabHost) {
+      const domainTag = `#${currentTabHost.replace(/\./g, '-')}`;
+      if (!newNote.tags.includes(domainTag)) {
+        newNote.tags.push(domainTag);
+      }
+    }
 
     // Check if this note has a recurring reminder from a rule
     if (settings.smartRulesEnabled && settings.rulesTrigger === 'autosave') {
