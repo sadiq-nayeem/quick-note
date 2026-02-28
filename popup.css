@@ -1179,13 +1179,17 @@ body {
   justify-content: flex-end;
   gap: 4px;
   opacity: 0;
+  max-height: 0;
+  overflow: hidden;
   transform: translateY(4px);
-  transition: opacity .2s, transform .2s;
+  transition: opacity .2s, transform .2s, max-height .25s ease;
 }
 
 .note-card:hover .note-actions,
 .note-actions.show-always {
   opacity: 1;
+  max-height: 60px;
+  /* enough for two rows of buttons */
   transform: translateY(0);
 }
 
