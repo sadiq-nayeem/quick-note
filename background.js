@@ -2,7 +2,38 @@
    QuickNote — background.js (Service Worker)
    ───────────────────────────────────────────── */
 
-// Listen for alarms
+// ── INSTALL / UPDATE ────────────────────────────
+chrome.runtime.onInstalled.addListener(() => {
+  // Create context menu for quick note capture
+  chrome.contextMenus.create({
+    id: 'saveToQuickNote',
+    title: 'Save to QuickNote',
+    contexts: ['selection']
+  });
+});
+
+// ── CONTEXT MENU ────────────────────────────────
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  const data = await chrome.storage.local.get(['qn_settings']);
+  if (data.qn_settings?.contextMenuEnabled) {
+    // Store selected text for popup to retrieve
+    chrome.storage.local.set({ '_pendingNote': info.selectionText });
+    // Open popup
+    chrome.action.openPopup();
+  }
+});
+
+// ── GLOBAL KEYBOARD SHORTCUT ───────────────────
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command === 'open-quicknote') {
+    const data = await chrome.storage.local.get(['qn_settings']);
+    if (data.qn_settings?.globalShortcutEnabled !== false) {
+      chrome.action.openPopup();
+    }
+  }
+});
+
+// ── ALARMS ──────────────────────────────────────
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name.startsWith('reminder_')) {
     const noteId = alarm.name.replace('reminder_', '');

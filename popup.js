@@ -23,7 +23,10 @@ let settings = {
   rulesTrigger: 'manual',     // 'manual' | 'typing' | 'autosave'
   rulesPriority: 'first',     // 'first' | 'all'
   reminderAction: 'dismiss',  // 'dismiss' | 'snooze' | 'both'
-  smartRules: []              // Array of rule objects
+  smartRules: [],             // Array of rule objects
+  contextMenuEnabled: false,  // Enable context menu
+  globalShortcutEnabled: true, // Enable global shortcut
+  noteLinkingEnabled: true    // Enable cross-note references
 };
 
 // Rule being edited
@@ -95,6 +98,47 @@ function escapeHtml(str) {
 
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// ── NOTE LINKING ─────────────────────────────────
+function extractReferences(text) {
+  if (!text || !settings.noteLinkingEnabled) return [];
+  const matches = text.matchAll(/\[\[([^\]]+)\]\]/g);
+  const refs = [];
+  const seenTitles = new Set();
+
+  for (const match of matches) {
+    const targetTitle = match[1].toLowerCase().trim();
+    if (seenTitles.has(targetTitle)) continue;
+    seenTitles.add(targetTitle);
+
+    // Find note by title (partial match)
+    const note = notes.find(n =>
+      n.title && n.title.toLowerCase().includes(targetTitle) && n.id !== editingId
+    );
+    if (note) refs.push({ id: note.id, title: note.title });
+  }
+  return refs;
+}
+
+function updateNoteLinks(noteId, references) {
+  // Remove this note from all linkedNotes arrays first
+  notes.forEach(n => {
+    if (n.linkedNotes) {
+      n.linkedNotes = n.linkedNotes.filter(id => id !== noteId);
+    }
+  });
+
+  // Add this note to referenced notes' linkedNotes
+  references.forEach(ref => {
+    const targetNote = notes.find(n => n.id === ref.id);
+    if (targetNote) {
+      if (!targetNote.linkedNotes) targetNote.linkedNotes = [];
+      if (!targetNote.linkedNotes.includes(noteId)) {
+        targetNote.linkedNotes.push(noteId);
+      }
+    }
+  });
 }
 
 // ── SMART RULES ───────────────────────────────────
@@ -283,6 +327,9 @@ const settingSmartRules = document.getElementById('settingSmartRules');
 const settingRulesTrigger = document.getElementById('settingRulesTrigger');
 const settingRulesPriority = document.getElementById('settingRulesPriority');
 const settingReminderAction = document.getElementById('settingReminderAction');
+const settingContextMenu = document.getElementById('settingContextMenu');
+const settingGlobalShortcut = document.getElementById('settingGlobalShortcut');
+const settingNoteLinking = document.getElementById('settingNoteLinking');
 const themeOptions = document.querySelectorAll('.theme-option');
 
 // Smart Rules UI
@@ -368,7 +415,7 @@ const toastUndo      = document.getElementById('toastUndo');
 // ── STORAGE ────────────────────────────────────
 function loadNotes() {
   return new Promise(resolve => {
-    chrome.storage.local.get(['qn_notes', 'qn_theme', 'qn_settings'], data => {
+    chrome.storage.local.get(['qn_notes', 'qn_theme', 'qn_settings', '_pendingNote'], data => {
       notes = data.qn_notes || [];
 
       // Load theme
@@ -382,6 +429,15 @@ function loadNotes() {
         settings = { ...settings, ...data.qn_settings };
         sortMode = settings.defaultSort;
         applySettings();
+      }
+
+      // Check for pending note from context menu
+      if (data._pendingNote) {
+        noteBody.value = data._pendingNote;
+        charCount.textContent = countWordsChars(data._pendingNote);
+        // Clear pending note
+        chrome.storage.local.remove('_pendingNote');
+        showToast('📄 Text captured from selection!');
       }
 
       resolve();
@@ -419,6 +475,9 @@ function openSettings() {
   settingRulesTrigger.value = settings.rulesTrigger;
   settingRulesPriority.value = settings.rulesPriority;
   settingReminderAction.value = settings.reminderAction;
+  settingContextMenu.checked = settings.contextMenuEnabled;
+  settingGlobalShortcut.checked = settings.globalShortcutEnabled;
+  settingNoteLinking.checked = settings.noteLinkingEnabled;
 
   // Set active theme option
   const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
@@ -447,6 +506,9 @@ btnSaveSettings.addEventListener('click', () => {
   settings.rulesTrigger = settingRulesTrigger.value;
   settings.rulesPriority = settingRulesPriority.value;
   settings.reminderAction = settingReminderAction.value;
+  settings.contextMenuEnabled = settingContextMenu.checked;
+  settings.globalShortcutEnabled = settingGlobalShortcut.checked;
+  settings.noteLinkingEnabled = settingNoteLinking.checked;
   saveSettings();
   sortMode = settings.defaultSort;
   applySettings();
@@ -925,6 +987,7 @@ function saveNote() {
   const title   = noteTitle.value.trim();
   const comment = noteComment.value.trim();
   const tags    = extractTags(body);
+  const references = extractReferences(body);
 
   // Handle reminder
   let reminder = null;
@@ -956,8 +1019,12 @@ function saveNote() {
         reminder,
         // Keep existing recurring interval unless manually changed
         recurringInterval: existing.recurringInterval,
+        references,
         updatedAt: Date.now()
       };
+
+      // Update bidirectional links
+      updateNoteLinks(editingId, references);
 
       // Set new alarm
       if (reminder) {
@@ -980,6 +1047,8 @@ function saveNote() {
       favorite: false,
       reminder,
       recurringInterval: null, // Will be set if applicable
+      references,
+      linkedNotes: [],
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
@@ -1008,6 +1077,9 @@ function saveNote() {
         chrome.alarms.create(`reminder_${newNote.id}`, { when: reminder });
       }
     }
+
+    // Update bidirectional links for new note
+    updateNoteLinks(newNote.id, references);
 
     showToast('✅ Note saved!');
   }
@@ -1369,6 +1441,33 @@ function openViewModal(noteId) {
     viewModalMeta.innerHTML += `<span class="view-modal-meta-tag">💬 ${escapeHtml(note.comment)}</span>`;
   }
 
+  // Add references/backlinks if enabled
+  if (settings.noteLinkingEnabled) {
+    const refs = note.references || [];
+    const backlinks = note.linkedNotes || [];
+    let refsHtml = '';
+
+    if (refs.length > 0) {
+      refsHtml += '<span style="font-size:10px;font-weight:700;color:var(--text-sub);margin-right:8px;">📎 Referenced:</span>';
+      refs.forEach(ref => {
+        refsHtml += `<span class="view-modal-meta-tag view-modal-ref" data-note-id="${ref.id}" style="cursor:pointer;background:var(--accent);color:#fff;">${escapeHtml(ref.title)}</span>`;
+      });
+    }
+    if (backlinks.length > 0) {
+      if (refsHtml) refsHtml += '<span style="margin:0 4px;">|</span>';
+      refsHtml += '<span style="font-size:10px;font-weight:700;color:var(--text-sub);margin-right:8px;">🔗 Backlinks:</span>';
+      backlinks.forEach(backId => {
+        const backNote = notes.find(n => n.id === backId);
+        if (backNote) {
+          refsHtml += `<span class="view-modal-meta-tag view-modal-ref" data-note-id="${backId}" style="cursor:pointer;">${escapeHtml(backNote.title || '(Untitled)')}</span>`;
+        }
+      });
+    }
+    if (refsHtml) {
+      viewModalMeta.innerHTML += refsHtml;
+    }
+  }
+
   // Render body with markdown
   if (note.body) {
     viewModalBody.innerHTML = parseMarkdown(note.body);
@@ -1379,6 +1478,16 @@ function openViewModal(noteId) {
   }
 
   viewModalOverlay.classList.remove('hidden');
+
+  // Add click handlers for reference chips
+  const refChips = viewModalMeta.querySelectorAll('.view-modal-ref');
+  refChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      const targetNoteId = chip.dataset.noteId;
+      closeViewModal();
+      openViewModal(targetNoteId);
+    });
+  });
 }
 
 function closeViewModal() {
