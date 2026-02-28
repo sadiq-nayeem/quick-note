@@ -13,6 +13,7 @@ let activeTag  = null;      // currently filtered tag
 let selectedColor = null;   // manually selected color
 let pendingDelete = null;   // for undo delete
 let undoTimer = null;       // undo timeout timer
+let hasPendingNote = false; // local flag for pending context menu note
 
 // Settings
 let settings = {
@@ -435,9 +436,12 @@ function loadNotes() {
       if (data._pendingNote) {
         noteBody.value = data._pendingNote;
         charCount.textContent = countWordsChars(data._pendingNote);
-        // Clear pending note
+        hasPendingNote = true; // Set local flag so resetForm doesn't clear it
+        // Clear pending note from storage
         chrome.storage.local.remove('_pendingNote');
         showToast('📄 Text captured from selection!');
+      } else {
+        hasPendingNote = false;
       }
 
       resolve();
@@ -860,11 +864,12 @@ function showView(name) {
 
   if (name === 'list') { renderAllNotes(); renderTagSidebar(); }
   if (name === 'search') { searchInput.focus(); renderSearch(); }
-  if (name === 'new' && !editingId) {
-    // Don't reset if we have a pending note from context menu
-    chrome.storage.local.get(['_pendingNote'], data => {
-      if (!data._pendingNote) resetForm();
-    });
+  if (name === 'new' && !editingId && !hasPendingNote) {
+    resetForm();
+  }
+  // Reset the pending note flag after we've shown the new view once
+  if (name !== 'new') {
+    hasPendingNote = false;
   }
 }
 
@@ -917,6 +922,9 @@ function resetForm() {
 
   // Hide rule matches
   ruleMatches.classList.add('hidden');
+
+  // Clear pending note flag
+  hasPendingNote = false;
 }
 
 noteBody.addEventListener('input', () => {
