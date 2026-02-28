@@ -26,6 +26,7 @@ let settings = {
   reminderAction: 'dismiss',  // 'dismiss' | 'snooze' | 'both'
   smartRules: [],             // Array of rule objects
   contextMenuEnabled: false,  // Enable context menu
+  contextMenuBehavior: 'show',  // 'show' | 'background' - how to handle captured text
   globalShortcutEnabled: true, // Enable global shortcut
   noteLinkingEnabled: true    // Enable cross-note references
 };
@@ -329,6 +330,7 @@ const settingRulesTrigger = document.getElementById('settingRulesTrigger');
 const settingRulesPriority = document.getElementById('settingRulesPriority');
 const settingReminderAction = document.getElementById('settingReminderAction');
 const settingContextMenu = document.getElementById('settingContextMenu');
+const settingContextMenuBehavior = document.getElementById('settingContextMenuBehavior');
 const settingGlobalShortcut = document.getElementById('settingGlobalShortcut');
 const settingNoteLinking = document.getElementById('settingNoteLinking');
 const themeOptions = document.querySelectorAll('.theme-option');
@@ -480,6 +482,7 @@ function openSettings() {
   settingRulesPriority.value = settings.rulesPriority;
   settingReminderAction.value = settings.reminderAction;
   settingContextMenu.checked = settings.contextMenuEnabled;
+  settingContextMenuBehavior.value = settings.contextMenuBehavior || 'show';
   settingGlobalShortcut.checked = settings.globalShortcutEnabled;
   settingNoteLinking.checked = settings.noteLinkingEnabled;
 
@@ -511,6 +514,7 @@ btnSaveSettings.addEventListener('click', () => {
   settings.rulesPriority = settingRulesPriority.value;
   settings.reminderAction = settingReminderAction.value;
   settings.contextMenuEnabled = settingContextMenu.checked;
+  settings.contextMenuBehavior = settingContextMenuBehavior.value;
   settings.globalShortcutEnabled = settingGlobalShortcut.checked;
   settings.noteLinkingEnabled = settingNoteLinking.checked;
   saveSettings();

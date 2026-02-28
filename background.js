@@ -2,6 +2,12 @@
    QuickNote — background.js (Service Worker)
    ───────────────────────────────────────────── */
 
+// ── UTILS ────────────────────────────────────────
+function extractTagsFromText(text) {
+  const matches = text.match(/#[\w\u00C0-\u024F]+/g);
+  return matches ? [...new Set(matches)] : [];
+}
+
 // ── INSTALL / UPDATE ────────────────────────────
 chrome.runtime.onInstalled.addListener(async () => {
   // Clear any old context menu and recreate based on settings
@@ -42,10 +48,44 @@ chrome.runtime.onInstalled.addListener(async () => {
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   const data = await chrome.storage.local.get(['qn_settings']);
   if (data.qn_settings?.contextMenuEnabled) {
-    // Store selected text for popup to retrieve
-    chrome.storage.local.set({ '_pendingNote': info.selectionText });
-    // Open popup
-    chrome.action.openPopup();
+    const settings = data.qn_settings || {};
+
+    if (settings.contextMenuBehavior === 'background') {
+      // Save directly in background without opening popup
+      const notes = data.qn_notes || [];
+      const newNote = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+        title: '', // Will use first 50 chars of selection as title if no title
+        body: info.selectionText,
+        comment: 'Captured from selection',
+        tags: extractTagsFromText(info.selectionText),
+        color: Math.floor(Math.random() * 7),
+        pinned: false,
+        favorite: false,
+        reminder: null,
+        recurringInterval: null,
+        references: [],
+        linkedNotes: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      // Use first 50 chars as title if body is longer
+      if (newNote.body.length > 50) {
+        newNote.title = newNote.body.substring(0, 47) + '...';
+      }
+      notes.unshift(newNote);
+      await chrome.storage.local.set({ qn_notes: notes });
+      chrome.notifications.create({
+        type: 'basic',
+        iconUrl: 'icons/icon128.png',
+        title: '🗒 QuickNote',
+        message: 'Saved ' + newNote.body.substring(0, 50) + (newNote.body.length > 50 ? '...' : '')
+      });
+    } else {
+      // Show popup with pre-filled text
+      chrome.storage.local.set({ '_pendingNote': info.selectionText });
+      chrome.action.openPopup();
+    }
   }
 });
 

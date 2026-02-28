@@ -307,6 +307,14 @@
           <span class="setting-hint">Show "Save to QuickNote" in right-click menu</span>
         </div>
         <div class="setting-group">
+          <label class="setting-label">When Text Captured</label>
+          <select class="setting-select" id="settingContextMenuBehavior">
+            <option value="show">Show popup with text pre-filled</option>
+            <option value="background">Save in background (no popup)</option>
+          </select>
+          <span class="setting-hint">Choose how captured text is handled</span>
+        </div>
+        <div class="setting-group">
           <label class="setting-label">Global Shortcut</label>
           <input type="checkbox" class="setting-checkbox" id="settingGlobalShortcut">
           <span class="setting-hint">Ctrl+Shift+Space to open QuickNote</span>
