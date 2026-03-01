@@ -11,7 +11,7 @@ let activeFolderFilter = '';// currently filtered folder ID
 let editingId = null;
 let deleteId = null;
 let searchMode = 'normal';  // 'normal' | 'strict' | 'regex'
-let currentView = 'new';    // 'new' | 'search' | 'list'
+let currentView = 'list';    // 'new' | 'search' | 'list'
 let sortMode = 'newest';  // 'newest' | 'oldest' | 'az' | 'color'
 let activeTag = null;      // currently filtered tag
 let searchFilters = { startDate: '', endDate: '', color: 'any', tag: '', hasReminder: false };
@@ -23,6 +23,7 @@ let hasPendingNote = false; // local flag for pending context menu note
 // Settings
 let settings = {
   defaultSort: 'newest',
+  landingPage: 'list',       // 'list' | 'new'
   showActionsAlways: false,
   remindersEnabled: false,
   smartRulesEnabled: false,
@@ -678,6 +679,8 @@ function applySettings() {
 // ── SETTINGS MODAL ───────────────────────────────
 function openSettings() {
   settingSortOrder.value = settings.defaultSort;
+  const settingLandingPage = document.getElementById('settingLandingPage');
+  if (settingLandingPage) settingLandingPage.value = settings.landingPage || 'list';
   settingShowActions.checked = settings.showActionsAlways;
   settingReminders.checked = settings.remindersEnabled;
   settingSmartRules.checked = settings.smartRulesEnabled;
@@ -742,6 +745,8 @@ settingsTabBtns.forEach(btn => {
 
 btnSaveSettings.addEventListener('click', () => {
   settings.defaultSort = settingSortOrder.value;
+  const settingLandingPage = document.getElementById('settingLandingPage');
+  if (settingLandingPage) settings.landingPage = settingLandingPage.value;
   settings.showActionsAlways = settingShowActions.checked;
   settings.remindersEnabled = settingReminders.checked;
   settings.smartRulesEnabled = settingSmartRules.checked;
@@ -1210,7 +1215,8 @@ function updateNoteCount() {
   noteCountEl.textContent = `${n} note${n !== 1 ? 's' : ''}`;
 }
 
-// ── VIEW SWITCHING ──────────────────────────────
+// ── VIEW SWITCHING ──────────────────────────────────────────
+const fabNew = document.getElementById('fabNew');
 function showView(name) {
   currentView = name;
   viewNew.classList.toggle('hidden', name !== 'new');
@@ -1219,13 +1225,18 @@ function showView(name) {
   viewTrash.classList.toggle('hidden', name !== 'trash');
   viewArchive.classList.toggle('hidden', name !== 'archive');
 
-  btnNew.classList.toggle('active', name === 'new');
+  // Main toolbar tabs
   btnSearch.classList.toggle('active', name === 'search');
   btnList.classList.toggle('active', name === 'list');
+
+  // Secondary toolbar icon buttons
   btnTrash.classList.toggle('active', name === 'trash');
   btnArchive.classList.toggle('active', name === 'archive');
 
   sortBar.classList.toggle('hidden', name !== 'list');
+
+  // Show FAB on list/search views, hide on new/trash/archive
+  if (fabNew) fabNew.classList.toggle('hidden', name === 'new');
 
   if (name === 'list') { renderAllNotes(); renderTagSidebar(); }
   if (name === 'search') { populateFilterTagSelect(); searchInput.focus(); renderSearch(); }
@@ -1239,6 +1250,10 @@ function showView(name) {
   }
 }
 
+// FAB click
+if (fabNew) {
+  fabNew.addEventListener('click', () => { editingId = null; showView('new'); });
+}
 btnNew.addEventListener('click', () => { editingId = null; showView('new'); });
 btnSearch.addEventListener('click', () => showView('search'));
 btnList.addEventListener('click', () => showView('list'));
@@ -2645,10 +2660,15 @@ try {
         chrome.storage.local.get('_openToList', data => {
           if (data._openToList) {
             chrome.storage.local.remove('_openToList');
-            showView('list');
-          } else {
+          }
+          // Check for pending note from context menu
+          if (hasPendingNote) {
             showView('new');
             noteBody.focus();
+          } else {
+            const landing = settings.landingPage || 'list';
+            showView(landing);
+            if (landing === 'new') noteBody.focus();
           }
         });
       });
@@ -2658,7 +2678,8 @@ try {
   // Fallback if tabs API is unavailable
   loadNotes().then(() => {
     updateNoteCount();
-    showView('new');
-    noteBody.focus();
+    const landing = settings.landingPage || 'list';
+    showView(landing);
+    if (landing === 'new') noteBody.focus();
   });
 }

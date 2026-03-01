@@ -294,11 +294,57 @@ body {
 /* ── TOOLBAR ── */
 .toolbar {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 6px;
   padding: 10px 16px 8px;
   border-bottom: 1.5px solid var(--border);
   background: var(--surface);
   flex-shrink: 0;
+}
+
+.toolbar-main {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+}
+
+.toolbar-secondary {
+  display: flex;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.toolbar-icon-btn {
+  background: none;
+  border: 1.5px solid var(--border);
+  color: var(--text-sub);
+  font-size: 14px;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s;
+}
+
+.toolbar-icon-btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.toolbar-icon-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.toolbar-icon-btn.hidden {
+  display: none;
 }
 
 /* ── SORT BAR ── */
@@ -367,6 +413,10 @@ body {
 .toolbar-btn.active {
   background: var(--accent);
   color: #fff;
+}
+
+.toolbar-btn.hidden {
+  display: none;
 }
 
 /* ── VIEWS ── */
@@ -695,30 +745,41 @@ body {
 /* ── SETTINGS TABS ── */
 .settings-tabs {
   display: flex;
-  padding: 0 16px;
+  padding: 0 12px;
   border-bottom: 1.5px solid var(--border);
   background: var(--surface);
-  gap: 16px;
+  gap: 4px;
   overflow-x: auto;
   flex-shrink: 0;
+  -webkit-overflow-scrolling: touch;
 }
 
 .settings-tabs::-webkit-scrollbar {
-  display: none;
+  height: 3px;
+}
+
+.settings-tabs::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.settings-tabs::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .settings-tab-btn {
   background: none;
   border: none;
   font-family: var(--font);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--text-sub);
-  padding: 10px 4px;
+  padding: 10px 6px;
   cursor: pointer;
   border-bottom: 2px solid transparent;
   transition: color .15s, border-color .15s;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .settings-tab-btn:hover {
@@ -1514,6 +1575,54 @@ body {
   display: none;
 }
 
+/* ── FAB (Floating Action Button) ── */
+.fab {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 24px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 45%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .2s, box-shadow .2s;
+  z-index: 40;
+  animation: fabIn .3s ease;
+}
+
+@keyframes fabIn {
+  from {
+    opacity: 0;
+    transform: scale(0.5) rotate(-90deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+.fab:hover {
+  transform: scale(1.1) rotate(90deg);
+  box-shadow: 0 6px 24px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.fab:active {
+  transform: scale(0.95);
+}
+
+.fab.hidden {
+  display: none;
+}
+
 .toast-undo {
   background: rgba(255, 255, 255, .2);
   border: none;
@@ -1880,7 +1989,72 @@ body {
 .setting-hint {
   font-size: 11px;
   color: var(--text-sub);
-  margin-left: 4px;
+  margin-left: 0;
+}
+
+/* ── Toggle Switch ── */
+.setting-toggle-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.setting-toggle-row>div {
+  flex: 1;
+}
+
+.setting-toggle-row .setting-label {
+  margin-bottom: 2px;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--border);
+  transition: background-color .25s, box-shadow .25s;
+  border-radius: 22px;
+}
+
+.toggle-slider::before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: transform .25s;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .15);
+}
+
+.toggle-switch input:checked+.toggle-slider {
+  background-color: var(--accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.toggle-switch input:checked+.toggle-slider::before {
+  transform: translateX(18px);
 }
 
 .setting-theme {
@@ -1900,6 +2074,10 @@ body {
   color: var(--text-sub);
   cursor: pointer;
   transition: all .15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
 }
 
 .theme-option:hover,
@@ -1907,6 +2085,42 @@ body {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
+}
+
+.theme-option.active .theme-preview {
+  border-color: rgba(255, 255, 255, .5);
+}
+
+.theme-preview {
+  width: 100%;
+  height: 28px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  border: 1px solid var(--border);
+}
+
+.light-preview {
+  background: linear-gradient(135deg, #FFF8F5 50%, #FFE4D6 50%);
+}
+
+.dark-preview {
+  background: linear-gradient(135deg, #1E1A1C 50%, #2A2428 50%);
+}
+
+.pink-preview {
+  background: linear-gradient(135deg, #FFF0F5 50%, #FFD6E6 50%);
+}
+
+.blue-preview {
+  background: linear-gradient(135deg, #F0F8FF 50%, #D6E6FF 50%);
+}
+
+.purple-preview {
+  background: linear-gradient(135deg, #F5F0FF 50%, #E6D6FF 50%);
+}
+
+.mint-preview {
+  background: linear-gradient(135deg, #F0FFF5 50%, #D6FFE6 50%);
 }
 
 .danger-zone {

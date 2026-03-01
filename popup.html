@@ -21,19 +21,24 @@
     </div>
     <div class="header-right">
       <button class="icon-btn" id="settingsBtn" title="Settings">⚙</button>
-      <button class="icon-btn" id="importBtn" title="Import notes">⬆</button>
-      <button class="icon-btn" id="exportBtn" title="Export notes">⬇</button>
       <button class="icon-btn" id="themeBtn" title="Toggle dark mode">🌙</button>
     </div>
   </header>
 
   <div class="toolbar">
-    <button class="toolbar-btn active" id="btnNew">＋ New</button>
-    <button class="toolbar-btn" id="btnSearch">⌕ Search</button>
-    <button class="toolbar-btn" id="btnList">≡ All Notes</button>
-    <button class="toolbar-btn" id="btnTrash">🗑 Trash</button>
-    <button class="toolbar-btn" id="btnArchive">📁 Archive</button>
+    <div class="toolbar-main">
+      <button class="toolbar-btn active" id="btnList">📋 Notes</button>
+      <button class="toolbar-btn" id="btnSearch">⌕ Search</button>
+    </div>
+    <div class="toolbar-secondary">
+      <button class="toolbar-icon-btn" id="btnTrash" title="Trash">🗑</button>
+      <button class="toolbar-icon-btn" id="btnArchive" title="Archive">📁</button>
+    </div>
   </div>
+
+  <!-- Hidden button for JS compat -->
+  <button id="btnNew" class="hidden" style="display:none"></button>
+  <input type="file" id="importInput" style="display: none;" accept=".json" />
 
   <!-- ── SORT BAR (shows in List view) ── -->
   <div class="sort-bar hidden" id="sortBar">
@@ -46,7 +51,7 @@
   </div>
 
   <!-- ══ VIEW: NEW / EDIT NOTE ══ -->
-  <div class="view" id="viewNew">
+  <div class="view hidden" id="viewNew">
     <!-- Template Bar -->
     <div class="template-bar">
       <span class="template-label">Template:</span>
@@ -187,7 +192,7 @@
   </div>
 
   <!-- ══ VIEW: ALL NOTES ══ -->
-  <div class="view hidden" id="viewList">
+  <div class="view" id="viewList">
     <div class="content-with-sidebar">
       <div class="tag-sidebar" id="tagSidebar">
         <div class="sidebar-header">Tags</div>
@@ -232,14 +237,14 @@
     </div>
   </div>
 
+  <!-- ── FAB (Floating Action Button) ── -->
+  <button class="fab" id="fabNew" title="New Note">＋</button>
+
   <!-- ── TOAST ── -->
   <div class="toast hidden" id="toast">
     <span class="toast-msg" id="toastMsg"></span>
     <button class="toast-undo hidden" id="toastUndo">Undo</button>
   </div>
-
-  <!-- ── HIDDEN FILE INPUT FOR IMPORT ── -->
-  <input type="file" id="importInput" style="display: none;" accept=".json" />
 
   <!-- ── RULES EDITOR MODAL ── -->
   <div class="rules-overlay hidden" id="rulesOverlay">
@@ -441,9 +446,11 @@
       <!-- Tab Navigation -->
       <div class="settings-tabs">
         <button class="settings-tab-btn active" data-tab="tabGeneral">General</button>
+        <button class="settings-tab-btn" data-tab="tabAppearance">Appearance</button>
         <button class="settings-tab-btn" data-tab="tabProductivity">Productivity</button>
         <button class="settings-tab-btn" data-tab="tabSmartRules">Smart Rules</button>
-        <button class="settings-tab-btn" data-tab="tabAboutHelp">About & Help</button>
+        <button class="settings-tab-btn" data-tab="tabDataSync">Data</button>
+        <button class="settings-tab-btn" data-tab="tabAboutHelp">Help</button>
       </div>
 
       <div class="settings-body">
@@ -460,84 +467,162 @@
             </select>
           </div>
           <div class="setting-group">
-            <label class="setting-label">Always Show Action Buttons</label>
-            <input type="checkbox" class="setting-checkbox" id="settingShowActions">
-            <span class="setting-hint">Uncheck to show only on hover</span>
+            <label class="setting-label">Default Landing Page</label>
+            <select class="setting-select" id="settingLandingPage">
+              <option value="list">📋 All Notes</option>
+              <option value="new">＋ New Note</option>
+            </select>
+            <span class="setting-hint">What to show when you open QuickNote</span>
           </div>
           <div class="setting-group">
-            <label class="setting-label">Note Linking</label>
-            <input type="checkbox" class="setting-checkbox" id="settingNoteLinking">
-            <span class="setting-hint">Use [[note title]] to cross-reference notes</span>
-          </div>
-          <div class="setting-group">
-            <label class="setting-label">Theme</label>
-            <div class="setting-theme">
-              <button class="theme-option" data-theme="light">☀️ Light</button>
-              <button class="theme-option" data-theme="dark">🌙 Dark</button>
-              <button class="theme-option" data-theme="pastel-pink">🌸 Pink</button>
-              <button class="theme-option" data-theme="pastel-blue">🌊 Blue</button>
-              <button class="theme-option" data-theme="pastel-purple">💜 Purple</button>
-              <button class="theme-option" data-theme="pastel-mint">🌿 Mint</button>
+            <div class="setting-toggle-row">
+              <div>
+                <label class="setting-label">Always Show Actions</label>
+                <span class="setting-hint">Show note action buttons without hover</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="settingShowActions">
+                <span class="toggle-slider"></span>
+              </label>
             </div>
           </div>
           <div class="setting-group">
-            <label class="setting-label">Trash</label>
-            <input type="checkbox" class="setting-checkbox" id="settingTrash">
-            <span class="setting-hint">Move deleted notes to Trash instead of permanently deleting</span>
+            <div class="setting-toggle-row">
+              <div>
+                <label class="setting-label">Note Linking</label>
+                <span class="setting-hint">Use [[note title]] to cross-reference</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="settingNoteLinking">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
           </div>
           <div class="setting-group">
-            <label class="setting-label">Folders / Notebooks</label>
-            <div style="display:flex; align-items:center; gap: 8px;">
-              <input type="checkbox" class="setting-checkbox" id="settingFolders">
-              <span class="setting-hint">Enable folder filtering</span>
+            <div class="setting-toggle-row">
+              <div>
+                <label class="setting-label">Rich Text Toolbar</label>
+                <span class="setting-hint">Formatting toolbar in the editor</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="settingRichEditor">
+                <span class="toggle-slider"></span>
+              </label>
             </div>
-            <div style="margin-top:4px;">
+          </div>
+          <div class="setting-group">
+            <div class="setting-toggle-row">
+              <div>
+                <label class="setting-label">Note Sharing</label>
+                <span class="setting-hint">Share menu on notes</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="settingNoteSharing">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+          <div class="setting-group">
+            <div class="setting-toggle-row">
+              <div>
+                <label class="setting-label">Trash</label>
+                <span class="setting-hint">Deleted notes go to Trash first</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="settingTrash">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+          <div class="setting-group">
+            <div class="setting-toggle-row">
+              <div>
+                <label class="setting-label">Archive</label>
+                <span class="setting-hint">Archive old notes</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="settingArchive">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+          <div class="setting-group">
+            <div class="setting-toggle-row">
+              <div>
+                <label class="setting-label">Statistics Dashboard</label>
+                <span class="setting-hint">Note stats in the Help tab</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="settingStats">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+          <div class="setting-group">
+            <div class="setting-toggle-row">
+              <div>
+                <label class="setting-label">Folders / Notebooks</label>
+                <span class="setting-hint">Organize notes into folders</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="settingFolders">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div style="margin-top:8px;">
               <button class="btn-secondary btn-sm" id="btnManageFolders">📁 Manage Folders</button>
             </div>
           </div>
+        </div>
+
+        <!-- TAB 2: APPEARANCE -->
+        <div class="settings-tab-content hidden" id="tabAppearance">
           <div class="setting-group">
-            <label class="setting-label">Statistics Dashboard</label>
-            <input type="checkbox" class="setting-checkbox" id="settingStats">
-            <span class="setting-hint">Show note statistics in About tab</span>
-          </div>
-          <div class="setting-group">
-            <label class="setting-label">Archive</label>
-            <input type="checkbox" class="setting-checkbox" id="settingArchive">
-            <span class="setting-hint">Enable archive feature for old notes</span>
-          </div>
-          <div class="setting-group">
-            <label class="setting-label">Sync Mode</label>
-            <select class="setting-select" id="settingSyncMode">
-              <option value="off">Off</option>
-              <option value="cloud">Cloud Only (Chrome Account)</option>
-              <option value="local">Local Only (File Export)</option>
-              <option value="both">Both Cloud & Local</option>
-            </select>
-            <span class="setting-hint">Cloud: syncs via Chrome account (100KB limit). Local: auto-exports to Downloads
-              for network sharing.</span>
-          </div>
-          <div class="setting-group">
-            <label class="setting-label">Rich Text Toolbar</label>
-            <input type="checkbox" class="setting-checkbox" id="settingRichEditor">
-            <span class="setting-hint">Show formatting toolbar above the note editor</span>
-          </div>
-          <div class="setting-group">
-            <label class="setting-label">Note Sharing</label>
-            <input type="checkbox" class="setting-checkbox" id="settingNoteSharing">
-            <span class="setting-hint">Enable share menu on notes</span>
-          </div>
-          <div class="setting-group danger-zone">
-            <label class="setting-label">Danger Zone</label>
-            <button class="btn-danger" id="btnClearAll">🗑 Clear All Notes</button>
+            <label class="setting-label">🎨 Theme</label>
+            <span class="setting-hint" style="margin-bottom:10px;display:block;">Choose a color theme for
+              QuickNote</span>
+            <div class="setting-theme">
+              <button class="theme-option" data-theme="light">
+                <span class="theme-preview light-preview"></span>
+                <span>☀️ Light</span>
+              </button>
+              <button class="theme-option" data-theme="dark">
+                <span class="theme-preview dark-preview"></span>
+                <span>🌙 Dark</span>
+              </button>
+              <button class="theme-option" data-theme="pastel-pink">
+                <span class="theme-preview pink-preview"></span>
+                <span>🌸 Pink</span>
+              </button>
+              <button class="theme-option" data-theme="pastel-blue">
+                <span class="theme-preview blue-preview"></span>
+                <span>🌊 Blue</span>
+              </button>
+              <button class="theme-option" data-theme="pastel-purple">
+                <span class="theme-preview purple-preview"></span>
+                <span>💜 Purple</span>
+              </button>
+              <button class="theme-option" data-theme="pastel-mint">
+                <span class="theme-preview mint-preview"></span>
+                <span>🌿 Mint</span>
+              </button>
+            </div>
           </div>
         </div>
 
-        <!-- TAB 2: PRODUCTIVITY -->
+        <!-- TAB 3: PRODUCTIVITY -->
         <div class="settings-tab-content hidden" id="tabProductivity">
           <div class="setting-group">
-            <label class="setting-label">Context Menu</label>
-            <input type="checkbox" class="setting-checkbox" id="settingContextMenu">
-            <span class="setting-hint">Show "Save to QuickNote" in right-click menu</span>
+            <div class="setting-toggle-row">
+              <div>
+                <label class="setting-label">Context Menu</label>
+                <span class="setting-hint">Show "Save to QuickNote" in right-click</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="settingContextMenu">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
           </div>
           <div class="setting-group">
             <label class="setting-label">When Text Captured</label>
@@ -548,44 +633,92 @@
             <span class="setting-hint">Choose how captured text is handled</span>
           </div>
           <div class="setting-group">
-            <label class="setting-label">Global Shortcut</label>
-            <input type="checkbox" class="setting-checkbox" id="settingGlobalShortcut">
-            <span class="setting-hint">Ctrl+Shift+Space to open QuickNote (configure in
-              chrome://extensions/shortcuts)</span>
+            <div class="setting-toggle-row">
+              <div>
+                <label class="setting-label">Global Shortcut</label>
+                <span class="setting-hint">Ctrl+Shift+Space to open QuickNote</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="settingGlobalShortcut">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
           </div>
           <div class="setting-group">
-            <label class="setting-label">Enable Reminders</label>
-            <input type="checkbox" class="setting-checkbox" id="settingReminders">
-            <span class="setting-hint">Allow setting date/time reminders on notes</span>
+            <div class="setting-toggle-row">
+              <div>
+                <label class="setting-label">Enable Reminders</label>
+                <span class="setting-hint">Date/time reminders on notes</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="settingReminders">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
           </div>
           <div class="setting-group">
-            <label class="setting-label">Pin Notes to Sites</label>
-            <input type="checkbox" class="setting-checkbox" id="settingTabPin">
-            <span class="setting-hint">Pin notes to websites — they float to the top when you visit that site</span>
+            <div class="setting-toggle-row">
+              <div>
+                <label class="setting-label">Pin Notes to Sites</label>
+                <span class="setting-hint">Notes float to top when visiting a pinned site</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="settingTabPin">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
           </div>
           <div class="setting-group">
-            <label class="setting-label">Show Floating Button</label>
-            <input type="checkbox" class="setting-checkbox" id="settingFloatingBtn">
-            <span class="setting-hint">Show a floating 🗒 button on pages with pinned notes</span>
+            <div class="setting-toggle-row">
+              <div>
+                <label class="setting-label">Show Floating Button</label>
+                <span class="setting-hint">🗒 button on pinned note pages</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="settingFloatingBtn">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
           </div>
           <div class="setting-group">
-            <label class="setting-label">Auto-Tag Domain</label>
-            <input type="checkbox" class="setting-checkbox" id="settingAutoTagDomain">
-            <span class="setting-hint">Automatically add the current site's domain as a tag when creating notes</span>
+            <div class="setting-toggle-row">
+              <div>
+                <label class="setting-label">Auto-Tag Domain</label>
+                <span class="setting-hint">Add current site domain as tag</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="settingAutoTagDomain">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
           </div>
           <div class="setting-group">
-            <label class="setting-label">Auto-Pin from Context Menu</label>
-            <input type="checkbox" class="setting-checkbox" id="settingContextMenuAutoPin">
-            <span class="setting-hint">Automatically pin notes to the current site when saved via right-click</span>
+            <div class="setting-toggle-row">
+              <div>
+                <label class="setting-label">Auto-Pin from Context Menu</label>
+                <span class="setting-hint">Pin notes to current site via right-click</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="settingContextMenuAutoPin">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
           </div>
         </div>
 
-        <!-- TAB 3: SMART RULES -->
+        <!-- TAB 4: SMART RULES -->
         <div class="settings-tab-content hidden" id="tabSmartRules">
           <div class="setting-group">
-            <label class="setting-label">Smart Rules</label>
-            <input type="checkbox" class="setting-checkbox" id="settingSmartRules">
-            <span class="setting-hint">Enable pattern-based automation</span>
+            <div class="setting-toggle-row">
+              <div>
+                <label class="setting-label">Smart Rules</label>
+                <span class="setting-hint">Enable pattern-based automation</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="settingSmartRules">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
           </div>
           <div class="setting-group">
             <label class="setting-label">Rules Trigger</label>
@@ -617,7 +750,35 @@
           </div>
         </div>
 
-        <!-- TAB 4: ABOUT & HELP -->
+        <!-- TAB 5: DATA & SYNC -->
+        <div class="settings-tab-content hidden" id="tabDataSync">
+          <div class="setting-group">
+            <label class="setting-label">📦 Import & Export</label>
+            <span class="setting-hint" style="margin-bottom:10px;display:block;">Backup and restore your notes</span>
+            <div style="display:flex; gap:8px;">
+              <button class="btn-secondary" id="importBtn" style="flex:1">⬆ Import Notes</button>
+              <button class="btn-secondary" id="exportBtn" style="flex:1">⬇ Export Notes</button>
+            </div>
+          </div>
+          <div class="setting-group">
+            <label class="setting-label">☁️ Sync Mode</label>
+            <select class="setting-select" id="settingSyncMode">
+              <option value="off">Off</option>
+              <option value="cloud">Cloud Only (Chrome Account)</option>
+              <option value="local">Local Only (File Export)</option>
+              <option value="both">Both Cloud & Local</option>
+            </select>
+            <span class="setting-hint">Cloud: syncs via Chrome account (100KB limit). Local: auto-exports to
+              Downloads.</span>
+          </div>
+          <div class="setting-group danger-zone">
+            <label class="setting-label">⚠️ Danger Zone</label>
+            <span class="setting-hint" style="margin-bottom:10px;display:block;">This action cannot be undone</span>
+            <button class="btn-danger" id="btnClearAll">🗑 Clear All Notes</button>
+          </div>
+        </div>
+
+        <!-- TAB 6: ABOUT & HELP -->
         <div class="settings-tab-content hidden" id="tabAboutHelp">
           <div class="about-section">
             <h3>QuickNote v1.0.0</h3>
@@ -659,8 +820,7 @@
             <div class="help-item">
               <h4>Core Features</h4>
               <p>Create new notes, search powerfully, manage folders, auto-tag with <code>#tags</code>, sort
-                dynamically, and color-code
-                notes.</p>
+                dynamically, and color-code notes.</p>
             </div>
 
             <div class="help-item">
@@ -670,7 +830,8 @@
               <ul>
                 <li><strong>Formatting:</strong> Auto-set titles, comment templates, or colors.</li>
                 <li><strong>Organization:</strong> Auto-assign to a specific Folder or apply auto-tags (e.g.
-                  <code>#jira-$1</code>).</li>
+                  <code>#jira-$1</code>).
+                </li>
                 <li><strong>Actions:</strong> Auto-pin to the top (📌), mark as favorite (⭐), or set recurring
                   reminders.</li>
                 <li><strong>Site Pinning:</strong> Auto-pin notes to specific websites (e.g. <code>github.com</code>) so
