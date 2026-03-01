@@ -236,6 +236,65 @@ function applyTemplate(template, captures) {
   return result;
 }
 
+// ── RULE PRESETS ─────────────────────────────────
+const RULE_PRESETS = {
+  meeting: {
+    name: 'Meeting Notes',
+    pattern: '(?:meeting|standup|sync|huddle|retro)',
+    titleTemplate: 'Meeting: $0',
+    commentTemplate: '',
+    bodyTemplate: '## Attendees\n- \n\n## Agenda\n1. \n\n## Action Items\n- [ ] \n\n## Notes\n',
+    tags: '#meeting',
+    color: '2',
+    pinned: false,
+    favorite: false
+  },
+  bug: {
+    name: 'Bug Tracker',
+    pattern: 'BUG-(\\d+)',
+    titleTemplate: 'Bug $1',
+    commentTemplate: 'Investigate BUG-$1',
+    bodyTemplate: '## Bug BUG-$1\n\n**Status:** Open\n**Priority:** \n**Steps to Reproduce:**\n1. \n\n**Expected:** \n**Actual:** \n',
+    tags: '#bug #dev',
+    color: '0',
+    pinned: false,
+    favorite: false
+  },
+  link: {
+    name: 'Link Saver',
+    pattern: 'https?://\\S+',
+    titleTemplate: 'Saved Link',
+    commentTemplate: '',
+    bodyTemplate: '',
+    tags: '#link #bookmark',
+    color: '3',
+    pinned: false,
+    favorite: false
+  },
+  journal: {
+    name: 'Journal Entry',
+    pattern: '(?:diary|journal|today|reflection)',
+    titleTemplate: 'Journal',
+    commentTemplate: '',
+    bodyTemplate: '## How I Feel\n\n\n## What Happened\n\n\n## Grateful For\n1. \n2. \n3. \n',
+    tags: '#journal #personal',
+    color: '5',
+    pinned: false,
+    favorite: true
+  },
+  code: {
+    name: 'Code Snippet',
+    pattern: '```[\\s\\S]*```',
+    titleTemplate: 'Code Snippet',
+    commentTemplate: '',
+    bodyTemplate: '',
+    tags: '#code #snippet',
+    color: '4',
+    pinned: false,
+    favorite: false
+  }
+};
+
 function findMatchingRules(text) {
   if (!text || !settings.smartRulesEnabled) return [];
   const matches = [];
@@ -267,6 +326,15 @@ function applyRule(matchData) {
   if (rule.commentTemplate) {
     noteComment.value = applyTemplate(rule.commentTemplate, captures);
   }
+  if (rule.bodyTemplate) {
+    const rendered = applyTemplate(rule.bodyTemplate, captures);
+    // Append to existing body (don't overwrite)
+    if (noteBody.value.trim()) {
+      noteBody.value = noteBody.value + '\n\n' + rendered;
+    } else {
+      noteBody.value = rendered;
+    }
+  }
   if (rule.color !== undefined && rule.color !== '') {
     selectedColor = parseInt(rule.color);
     colorBtns.forEach(b => b.classList.remove('active'));
@@ -278,7 +346,6 @@ function applyRule(matchData) {
   if (rule.interval && rule.interval > 0) {
     reminderToggle.checked = true;
     reminderDate.disabled = false;
-    // Set reminder to interval from now
     const reminderTime = Date.now() + (parseInt(rule.interval) * 60 * 1000);
     reminderDate.value = new Date(reminderTime - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   }
@@ -286,14 +353,17 @@ function applyRule(matchData) {
   if (rule.folder) {
     noteFolder.value = rule.folder;
   }
-  // Handle tags — store on rule for saveNote to pick up
+  // Handle tags
   if (rule.tags) {
     matchData._resolvedTags = applyTemplate(rule.tags, captures);
   }
-  // Handle pinnedUrl — store on rule for saveNote to pick up
+  // Handle pinnedUrl
   if (rule.pinnedUrl) {
     matchData._resolvedPinnedUrl = applyTemplate(rule.pinnedUrl, captures);
   }
+  // Increment match counter
+  if (rule.matchCount === undefined) rule.matchCount = 0;
+  rule.matchCount++;
 }
 
 function showRuleMatches(matches) {
@@ -956,15 +1026,23 @@ function renderRulesList() {
   settings.smartRules.forEach((rule, index) => {
     const item = document.createElement('div');
     item.className = `rule-item ${rule.enabled ? '' : 'disabled'}`;
+    item.draggable = true;
+    item.dataset.index = index;
+    const mc = rule.matchCount || 0;
     item.innerHTML = `
       <div class="rule-item-header">
+        <span class="rule-drag-handle" title="Drag to reorder">☰</span>
         <span class="rule-item-name">${escapeHtml(rule.name)}</span>
-        <span class="rule-item-enabled">${rule.enabled ? 'ON' : 'OFF'}</span>
+        <div class="rule-item-meta">
+          ${mc > 0 ? `<span class="rule-match-count">${mc} match${mc !== 1 ? 'es' : ''}</span>` : ''}
+          <span class="rule-item-enabled">${rule.enabled ? 'ON' : 'OFF'}</span>
+        </div>
       </div>
       <div class="rule-item-pattern">Pattern: <code>${escapeHtml(rule.pattern)}</code></div>
       <div class="rule-item-templates">
         ${rule.titleTemplate ? `<span>Title: ${escapeHtml(rule.titleTemplate)}</span>` : ''}
         ${rule.commentTemplate ? `<span>Comment: ${escapeHtml(rule.commentTemplate)}</span>` : ''}
+        ${rule.bodyTemplate ? '<span>📝 Body</span>' : ''}
         ${rule.interval ? `<span>⏰ Every ${rule.interval}min</span>` : ''}
         ${rule.color !== '' ? `<span>🎨 Color ${rule.color}</span>` : ''}
         ${rule.tags ? `<span>🏷 ${escapeHtml(rule.tags)}</span>` : ''}
@@ -974,7 +1052,40 @@ function renderRulesList() {
         ${rule.favorite ? '<span>⭐ Favorite</span>' : ''}
       </div>
     `;
-    item.addEventListener('click', () => openRuleEdit(index));
+    item.addEventListener('click', (e) => {
+      if (e.target.classList.contains('rule-drag-handle')) return;
+      openRuleEdit(index);
+    });
+
+    // Drag events
+    item.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/plain', index);
+      item.classList.add('dragging');
+    });
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      rulesList.querySelectorAll('.rule-item').forEach(el => el.classList.remove('drag-over'));
+    });
+    item.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      item.classList.add('drag-over');
+    });
+    item.addEventListener('dragleave', () => {
+      item.classList.remove('drag-over');
+    });
+    item.addEventListener('drop', (e) => {
+      e.preventDefault();
+      item.classList.remove('drag-over');
+      const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+      const toIndex = index;
+      if (fromIndex !== toIndex) {
+        const [moved] = settings.smartRules.splice(fromIndex, 1);
+        settings.smartRules.splice(toIndex, 0, moved);
+        renderRulesList();
+        showToast('↕️ Rule order updated');
+      }
+    });
+
     rulesList.appendChild(item);
   });
 }
@@ -985,14 +1096,23 @@ btnAddRule.addEventListener('click', () => {
 
 function openRuleEdit(index) {
   editingRuleIndex = index;
+  const rulePreset = document.getElementById('rulePreset');
+  const ruleBodyTemplate = document.getElementById('ruleBodyTemplate');
+  const ruleTestInput = document.getElementById('ruleTestInput');
+  const ruleTestResult = document.getElementById('ruleTestResult');
+
+  if (rulePreset) rulePreset.value = '';
+  if (ruleTestInput) ruleTestInput.value = '';
+  if (ruleTestResult) { ruleTestResult.innerHTML = ''; ruleTestResult.classList.add('hidden'); }
+
   if (index >= 0) {
-    // Edit existing rule
     const rule = settings.smartRules[index];
     ruleEditTitle.textContent = 'Edit Rule';
     ruleName.value = rule.name;
     rulePattern.value = rule.pattern;
     ruleTitle.value = rule.titleTemplate || '';
     ruleComment.value = rule.commentTemplate || '';
+    if (ruleBodyTemplate) ruleBodyTemplate.value = rule.bodyTemplate || '';
     ruleInterval.value = rule.interval || '';
     ruleEnabled.checked = rule.enabled;
     ruleTags.value = rule.tags || '';
@@ -1003,12 +1123,12 @@ function openRuleEdit(index) {
     ruleArchiveOnDate.value = rule.archiveOnDate || '';
     btnDeleteRule.style.display = '';
   } else {
-    // New rule
     ruleEditTitle.textContent = 'New Rule';
     ruleName.value = '';
     rulePattern.value = '';
     ruleTitle.value = '';
     ruleComment.value = '';
+    if (ruleBodyTemplate) ruleBodyTemplate.value = '';
     ruleInterval.value = '';
     ruleEnabled.checked = true;
     ruleTags.value = '';
@@ -1064,11 +1184,13 @@ btnSaveRule.addEventListener('click', () => {
   const activeColorBtn = ruleColors.querySelector('.rule-color-btn.active');
   const color = activeColorBtn ? activeColorBtn.dataset.color : '';
 
+  const ruleBodyTemplate = document.getElementById('ruleBodyTemplate');
   const rule = {
     name: ruleName.value.trim() || 'Untitled Rule',
     pattern: rulePattern.value.trim(),
     titleTemplate: ruleTitle.value.trim(),
     commentTemplate: ruleComment.value.trim(),
+    bodyTemplate: ruleBodyTemplate ? ruleBodyTemplate.value.trim() : '',
     interval: ruleInterval.value ? parseInt(ruleInterval.value) : null,
     color: color,
     tags: ruleTags.value.trim(),
@@ -1078,7 +1200,8 @@ btnSaveRule.addEventListener('click', () => {
     favorite: ruleFavorite.checked,
     archiveAfterDays: ruleArchiveAfterDays.value ? parseInt(ruleArchiveAfterDays.value) : null,
     archiveOnDate: ruleArchiveOnDate.value || null,
-    enabled: ruleEnabled.checked
+    enabled: ruleEnabled.checked,
+    matchCount: editingRuleIndex >= 0 ? (settings.smartRules[editingRuleIndex].matchCount || 0) : 0
   };
 
   // Validate regex
@@ -1155,6 +1278,124 @@ btnSaveRules.addEventListener('click', () => {
     showToast('📜 Rules saved!');
   }
 });
+
+// ── PRESET SELECTOR ────────────────────────────────
+const rulePreset = document.getElementById('rulePreset');
+if (rulePreset) {
+  rulePreset.addEventListener('change', () => {
+    const key = rulePreset.value;
+    if (!key || !RULE_PRESETS[key]) return;
+    const preset = RULE_PRESETS[key];
+    ruleName.value = preset.name;
+    rulePattern.value = preset.pattern;
+    ruleTitle.value = preset.titleTemplate || '';
+    ruleComment.value = preset.commentTemplate || '';
+    const ruleBodyTemplate = document.getElementById('ruleBodyTemplate');
+    if (ruleBodyTemplate) ruleBodyTemplate.value = preset.bodyTemplate || '';
+    ruleTags.value = preset.tags || '';
+    // Set color
+    ruleColors.querySelectorAll('.rule-color-btn').forEach(b => b.classList.remove('active'));
+    if (preset.color) {
+      const colorBtn = ruleColors.querySelector(`.rule-color-btn[data-color="${preset.color}"]`);
+      if (colorBtn) colorBtn.classList.add('active');
+    }
+    rulePinned.checked = !!preset.pinned;
+    ruleFavorite.checked = !!preset.favorite;
+    showToast(`✨ Loaded "${preset.name}" preset`);
+  });
+}
+
+// ── LIVE REGEX TEST ────────────────────────────────
+const ruleTestInput = document.getElementById('ruleTestInput');
+const ruleTestResult = document.getElementById('ruleTestResult');
+
+function runRegexTest() {
+  if (!ruleTestInput || !ruleTestResult) return;
+  const pattern = rulePattern.value.trim();
+  const testText = ruleTestInput.value;
+  if (!pattern || !testText) {
+    ruleTestResult.classList.add('hidden');
+    return;
+  }
+  try {
+    const regex = new RegExp(pattern, 'gi');
+    const match = regex.exec(testText);
+    if (match) {
+      let html = `<span class="regex-match">${escapeHtml(match[0])}</span>`;
+      if (match.length > 1) {
+        html += ' &nbsp;→ ';
+        for (let i = 1; i < match.length; i++) {
+          html += `<span class="regex-group">$${i}: ${escapeHtml(match[i] || '')}</span>`;
+        }
+      }
+      ruleTestResult.innerHTML = html;
+    } else {
+      ruleTestResult.innerHTML = '<span class="regex-test-no-match">No match</span>';
+    }
+    ruleTestResult.classList.remove('hidden');
+  } catch {
+    ruleTestResult.innerHTML = '<span class="regex-test-no-match">Invalid pattern</span>';
+    ruleTestResult.classList.remove('hidden');
+  }
+}
+
+if (ruleTestInput) {
+  ruleTestInput.addEventListener('input', runRegexTest);
+}
+rulePattern.addEventListener('input', runRegexTest);
+
+// ── RULES EXPORT ───────────────────────────────────
+const btnExportRules = document.getElementById('btnExportRules');
+if (btnExportRules) {
+  btnExportRules.addEventListener('click', () => {
+    if (settings.smartRules.length === 0) {
+      showToast('⚠️ No rules to export');
+      return;
+    }
+    const blob = new Blob([JSON.stringify(settings.smartRules, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `quicknote-rules-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(`📦 Exported ${settings.smartRules.length} rules!`);
+  });
+}
+
+// ── RULES IMPORT ───────────────────────────────────
+const btnImportRules = document.getElementById('btnImportRules');
+const rulesImportInput = document.getElementById('rulesImportInput');
+if (btnImportRules && rulesImportInput) {
+  btnImportRules.addEventListener('click', () => rulesImportInput.click());
+  rulesImportInput.addEventListener('change', () => {
+    const file = rulesImportInput.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const imported = JSON.parse(e.target.result);
+        if (!Array.isArray(imported)) throw new Error('Must be a JSON array');
+        // Validate each rule
+        imported.forEach((r, i) => {
+          if (!r.name || !r.pattern) throw new Error(`Rule #${i + 1}: missing name or pattern`);
+          try { new RegExp(r.pattern); } catch { throw new Error(`Rule #${i + 1}: invalid regex`); }
+          r.enabled = r.enabled !== false;
+          r.matchCount = r.matchCount || 0;
+        });
+        // Merge: add all (user can remove duplicates manually)
+        settings.smartRules.push(...imported);
+        saveSettings();
+        renderRulesList();
+        showToast(`📥 Imported ${imported.length} rule${imported.length !== 1 ? 's' : ''}!`);
+      } catch (err) {
+        showToast(`❌ Import failed: ${err.message}`);
+      }
+      rulesImportInput.value = '';
+    };
+    reader.readAsText(file);
+  });
+}
 
 // ── REMINDER TOGGLE ───────────────────────────────
 reminderToggle.addEventListener('change', () => {

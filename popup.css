@@ -2219,6 +2219,25 @@ mark {
   background: var(--border);
 }
 
+.rules-action-btn {
+  background: none;
+  border: 1.5px solid var(--border);
+  font-family: var(--font);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-sub);
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.rules-action-btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
 .rules-body {
   flex: 1;
   overflow-y: auto;
@@ -2245,6 +2264,7 @@ mark {
   margin-bottom: 10px;
   cursor: pointer;
   transition: all .15s;
+  position: relative;
 }
 
 .rule-item:hover {
@@ -2255,17 +2275,58 @@ mark {
   opacity: 0.6;
 }
 
+.rule-item.dragging {
+  opacity: 0.4;
+  border-style: dashed;
+}
+
+.rule-item.drag-over {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
 .rule-item-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 6px;
+}
+
+.rule-drag-handle {
+  cursor: grab;
+  font-size: 14px;
+  color: var(--text-sub);
+  opacity: 0.4;
+  transition: opacity .15s;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.rule-item:hover .rule-drag-handle {
+  opacity: 0.8;
 }
 
 .rule-item-name {
   font-size: 13px;
   font-weight: 700;
   color: var(--text);
+  flex: 1;
+}
+
+.rule-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.rule-match-count {
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+  font-weight: 700;
 }
 
 .rule-item-enabled {
@@ -2387,6 +2448,74 @@ mark {
   color: var(--text-sub);
   display: block;
   margin-top: 3px;
+}
+
+/* ── Regex Test Area ── */
+.regex-test-area {
+  margin-top: 8px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.regex-test-input {
+  border: none !important;
+  border-radius: 0 !important;
+  border-bottom: 1px solid var(--border) !important;
+  font-size: 12px !important;
+}
+
+.regex-test-result {
+  padding: 8px 10px;
+  font-size: 11px;
+  color: var(--text-sub);
+  background: var(--bg);
+  min-height: 20px;
+  line-height: 1.6;
+}
+
+.regex-test-result.hidden {
+  display: none;
+}
+
+.regex-test-result .regex-match {
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+  color: var(--accent);
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+.regex-test-result .regex-group {
+  display: inline-block;
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 6px;
+  font-weight: 700;
+  margin: 0 2px;
+}
+
+.regex-test-result .regex-group:nth-child(odd) {
+  background: color-mix(in srgb, #9b59b6 20%, transparent);
+  color: #9b59b6;
+}
+
+.regex-test-result .regex-group:nth-child(even) {
+  background: color-mix(in srgb, #e67e22 20%, transparent);
+  color: #e67e22;
+}
+
+.regex-test-no-match {
+  color: var(--text-sub);
+  font-style: italic;
+}
+
+/* ── Body Template ── */
+.rule-body-template {
+  resize: vertical;
+  min-height: 60px;
+  font-family: var(--font);
+  font-size: 12px;
 }
 
 .rule-colors {

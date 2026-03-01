@@ -250,12 +250,15 @@
   <div class="rules-overlay hidden" id="rulesOverlay">
     <div class="rules-modal">
       <div class="rules-header">
-        <h2>📜 Smart Rules Editor</h2>
+        <h2>📜 Smart Rules</h2>
         <div class="rules-header-actions">
+          <button class="rules-action-btn" id="btnImportRules" title="Import rules">⬆ Import</button>
+          <button class="rules-action-btn" id="btnExportRules" title="Export rules">⬇ Export</button>
           <button class="rules-json-toggle" id="btnJsonToggle" title="Toggle JSON editor">{ } JSON</button>
           <button class="rules-close" id="btnCloseRules">✕</button>
         </div>
       </div>
+      <input type="file" id="rulesImportInput" style="display:none" accept=".json">
       <div class="rules-body" id="rulesList">
         <!-- Rules will be rendered here -->
       </div>
@@ -263,7 +266,7 @@
       <div class="rules-json-editor hidden" id="rulesJsonEditor">
         <div class="rules-json-hint">
           Each rule:
-          <code>{ name, pattern, titleTemplate, commentTemplate, color, interval, tags, folder, pinnedUrl, pinned, favorite, enabled }</code>
+          <code>{ name, pattern, titleTemplate, commentTemplate, bodyTemplate, color, interval, tags, folder, pinnedUrl, pinned, favorite, enabled, matchCount }</code>
         </div>
         <textarea class="rules-json-textarea" id="rulesJsonTextarea" spellcheck="false" placeholder="[]"></textarea>
         <div class="rules-json-error hidden" id="rulesJsonError"></div>
@@ -300,6 +303,17 @@
       </div>
       <div class="rule-edit-body">
         <div class="rule-edit-group">
+          <label>Preset</label>
+          <select class="input" id="rulePreset">
+            <option value="">— Custom Rule —</option>
+            <option value="meeting">📋 Meeting Notes</option>
+            <option value="bug">🐛 Bug Tracker</option>
+            <option value="link">📎 Link Saver</option>
+            <option value="journal">📖 Journal Entry</option>
+            <option value="code">💻 Code Snippet</option>
+          </select>
+        </div>
+        <div class="rule-edit-group">
           <label>Rule Name</label>
           <input type="text" class="input" id="ruleName" placeholder="e.g., CL Tracker" maxlength="50">
         </div>
@@ -307,6 +321,11 @@
           <label>Trigger Pattern (Regex)</label>
           <input type="text" class="input" id="rulePattern" placeholder="e.g., CL-(\d+)" maxlength="200">
           <span class="rule-hint">Use capture groups like $1, $2 in templates</span>
+          <div class="regex-test-area">
+            <input type="text" class="input regex-test-input" id="ruleTestInput"
+              placeholder="Type sample text to test...">
+            <div class="regex-test-result hidden" id="ruleTestResult"></div>
+          </div>
         </div>
         <div class="rule-edit-group">
           <label>Title Template</label>
@@ -315,6 +334,12 @@
         <div class="rule-edit-group">
           <label>Comment Template</label>
           <input type="text" class="input" id="ruleComment" placeholder="e.g., Check status" maxlength="200">
+        </div>
+        <div class="rule-edit-group">
+          <label>Body Template</label>
+          <textarea class="input rule-body-template" id="ruleBodyTemplate" rows="3"
+            placeholder="e.g., ## Agenda\n- Item 1\n- Item 2" maxlength="2000"></textarea>
+          <span class="rule-hint">Auto-fill note body when rule matches. Supports $1, $2 captures</span>
         </div>
         <div class="rule-edit-group">
           <label>Reminder Interval</label>
