@@ -232,8 +232,8 @@ body {
   background: var(--bg);
   color: var(--text);
   width: 380px;
-  min-height: 200px;
-  max-height: 580px;
+  min-height: 400px;
+  height: 580px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -1305,6 +1305,15 @@ body {
   opacity: .7;
 }
 
+.note-arch-badge {
+  position: absolute;
+  top: 8px;
+  right: 42px;
+  font-size: 11px;
+  opacity: .7;
+  color: var(--accent);
+}
+
 .note-rem-badge {
   position: absolute;
   top: 8px;
@@ -1760,8 +1769,11 @@ body {
 
 /* ── SETTINGS MODAL ── */
 .settings-overlay {
-  position: fixed;
-  inset: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: rgba(0, 0, 0, .5);
   display: flex;
   align-items: center;
@@ -2282,6 +2294,19 @@ mark {
 }
 
 .trash-title {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+/* Archive Styles */
+.archive-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+}
+
+.archive-title {
   font-weight: 700;
   font-size: 15px;
 }

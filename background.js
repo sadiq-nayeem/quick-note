@@ -181,6 +181,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 // ── TRASH AUTO-PURGE (30 days) ──────────────────
 chrome.alarms.create('trashPurge', { periodInMinutes: 1440 }); // once daily
 
+// ── ARCHIVE AUTO-ARCHIVE ─────────────────────────
+chrome.alarms.create('archiveCheck', { periodInMinutes: 1440 }); // once daily
+
 // ── ALARMS ──────────────────────────────────────
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === 'trashPurge') {
@@ -192,6 +195,36 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     const filtered = trash.filter(n => (n.deletedAt || 0) > cutoff);
     if (filtered.length !== trash.length) {
       await chrome.storage.local.set({ qn_trash: filtered });
+    }
+    return;
+  }
+
+  if (alarm.name === 'archiveCheck') {
+    const data = await chrome.storage.local.get(['qn_notes', 'qn_archive', 'qn_settings']);
+    const settings = data.qn_settings || {};
+    if (!settings.archiveEnabled) return;
+
+    const notes = data.qn_notes || [];
+    let archive = data.qn_archive || [];
+    const now = Date.now();
+
+    // Find notes that should be archived
+    const notesToArchive = notes.filter(n => n.archiveAfter && n.archiveAfter <= now);
+    if (notesToArchive.length > 0) {
+      // Move notes to archive
+      notesToArchive.forEach(note => {
+        note.archivedAt = now;
+        delete note.archiveAfter;
+      });
+      archive = [...notesToArchive, ...archive];
+
+      // Remove from notes
+      const remainingNotes = notes.filter(n => !n.archiveAfter || n.archiveAfter > now);
+
+      await chrome.storage.local.set({
+        qn_notes: remainingNotes,
+        qn_archive: archive
+      });
     }
     return;
   }

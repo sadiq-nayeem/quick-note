@@ -5,6 +5,7 @@
 // ── STATE ──────────────────────────────────────
 let notes = [];
 let trash = [];
+let archive = [];           // Archived notes
 let folders = [];           // Array of folder objects: {id, name}
 let activeFolderFilter = '';// currently filtered folder ID
 let editingId = null;
@@ -42,7 +43,8 @@ let settings = {
   syncMode: 'off',             // 'off' | 'cloud' | 'local' | 'both'
   richEditorEnabled: true,     // Show markdown toolbar
   noteSharingEnabled: true,    // Show share action button on notes
-  statsEnabled: true           // Show statistics dashboard in About tab
+  statsEnabled: true,          // Show statistics dashboard in About tab
+  archiveEnabled: true         // Enable archive feature
 };
 
 let currentTabHost = '';  // hostname of the active browser tab
@@ -437,6 +439,7 @@ const settingContextMenuAutoPin = document.getElementById('settingContextMenuAut
 const settingTrash = document.getElementById('settingTrash');
 const settingFolders = document.getElementById('settingFolders');
 const settingStats = document.getElementById('settingStats');
+const settingArchive = document.getElementById('settingArchive');
 const btnManageFolders = document.getElementById('btnManageFolders');
 const settingSyncMode = document.getElementById('settingSyncMode');
 const settingRichEditor = document.getElementById('settingRichEditor');
@@ -452,9 +455,13 @@ let shareNoteId = null;
 
 // Trash UI
 const viewTrash = document.getElementById('viewTrash');
+const viewArchive = document.getElementById('viewArchive');
 const btnTrash = document.getElementById('btnTrash');
+const btnArchive = document.getElementById('btnArchive');
 const trashNotesEl = document.getElementById('trashNotes');
 const trashEmptyState = document.getElementById('trashEmptyState');
+const archiveNotesEl = document.getElementById('archiveNotes');
+const archiveEmptyState = document.getElementById('archiveEmptyState');
 const btnEmptyTrash = document.getElementById('btnEmptyTrash');
 
 // Folders UI
@@ -500,6 +507,8 @@ const ruleFolder = document.getElementById('ruleFolder');
 const rulePinnedUrl = document.getElementById('rulePinnedUrl');
 const rulePinned = document.getElementById('rulePinned');
 const ruleFavorite = document.getElementById('ruleFavorite');
+const ruleArchiveAfterDays = document.getElementById('ruleArchiveAfterDays');
+const ruleArchiveOnDate = document.getElementById('ruleArchiveOnDate');
 const btnSaveRule = document.getElementById('btnSaveRule');
 const btnDeleteRule = document.getElementById('btnDeleteRule');
 
@@ -574,9 +583,10 @@ const toastUndo = document.getElementById('toastUndo');
 // ── STORAGE ────────────────────────────────────
 function loadNotes() {
   return new Promise(resolve => {
-    chrome.storage.local.get(['qn_notes', 'qn_theme', 'qn_settings', '_pendingNote', 'qn_trash', 'qn_folders'], data => {
+    chrome.storage.local.get(['qn_notes', 'qn_theme', 'qn_settings', '_pendingNote', 'qn_trash', 'qn_folders', 'qn_archive'], data => {
       notes = data.qn_notes || [];
       trash = data.qn_trash || [];
+      archive = data.qn_archive || [];
       folders = data.qn_folders || [];
 
       // Load theme
@@ -630,6 +640,10 @@ function saveTrash() {
   chrome.storage.local.set({ qn_trash: trash });
 }
 
+function saveArchive() {
+  chrome.storage.local.set({ qn_archive: archive });
+}
+
 function saveFolders() {
   chrome.storage.local.set({ qn_folders: folders });
 }
@@ -656,6 +670,9 @@ function applySettings() {
   if (folderManageGroup) folderManageGroup.classList.toggle('hidden', !settings.foldersEnabled);
   if (folderSelectGroup) folderSelectGroup.classList.toggle('hidden', !settings.foldersEnabled);
   if (folderBar) folderBar.classList.toggle('hidden', !settings.foldersEnabled);
+
+  // Archive UI visibility
+  btnArchive.classList.toggle('hidden', !settings.archiveEnabled);
 }
 
 // ── SETTINGS MODAL ───────────────────────────────
@@ -678,6 +695,7 @@ function openSettings() {
   settingTrash.checked = settings.trashEnabled !== false;
   settingFolders.checked = settings.foldersEnabled !== false;
   settingStats.checked = settings.statsEnabled !== false;
+  settingArchive.checked = settings.archiveEnabled !== false;
   settingSyncMode.value = settings.syncMode || 'off';
   settingRichEditor.checked = settings.richEditorEnabled !== false;
   if (settingNoteSharing) settingNoteSharing.checked = settings.noteSharingEnabled !== false;
@@ -741,6 +759,7 @@ btnSaveSettings.addEventListener('click', () => {
   settings.trashEnabled = settingTrash.checked;
   settings.foldersEnabled = settingFolders.checked;
   settings.statsEnabled = settingStats.checked;
+  settings.archiveEnabled = settingArchive.checked;
   settings.syncMode = settingSyncMode.value;
   settings.richEditorEnabled = settingRichEditor.checked;
   if (settingNoteSharing) settings.noteSharingEnabled = settingNoteSharing.checked;
@@ -975,6 +994,8 @@ function openRuleEdit(index) {
     rulePinnedUrl.value = rule.pinnedUrl || '';
     rulePinned.checked = !!rule.pinned;
     ruleFavorite.checked = !!rule.favorite;
+    ruleArchiveAfterDays.value = rule.archiveAfterDays || '';
+    ruleArchiveOnDate.value = rule.archiveOnDate || '';
     btnDeleteRule.style.display = '';
   } else {
     // New rule
@@ -989,6 +1010,8 @@ function openRuleEdit(index) {
     rulePinnedUrl.value = '';
     rulePinned.checked = false;
     ruleFavorite.checked = false;
+    ruleArchiveAfterDays.value = '';
+    ruleArchiveOnDate.value = '';
     btnDeleteRule.style.display = 'none';
   }
 
@@ -1048,6 +1071,8 @@ btnSaveRule.addEventListener('click', () => {
     pinnedUrl: rulePinnedUrl.value.trim(),
     pinned: rulePinned.checked,
     favorite: ruleFavorite.checked,
+    archiveAfterDays: ruleArchiveAfterDays.value ? parseInt(ruleArchiveAfterDays.value) : null,
+    archiveOnDate: ruleArchiveOnDate.value || null,
     enabled: ruleEnabled.checked
   };
 
@@ -1192,17 +1217,20 @@ function showView(name) {
   viewSearch.classList.toggle('hidden', name !== 'search');
   viewList.classList.toggle('hidden', name !== 'list');
   viewTrash.classList.toggle('hidden', name !== 'trash');
+  viewArchive.classList.toggle('hidden', name !== 'archive');
 
   btnNew.classList.toggle('active', name === 'new');
   btnSearch.classList.toggle('active', name === 'search');
   btnList.classList.toggle('active', name === 'list');
   btnTrash.classList.toggle('active', name === 'trash');
+  btnArchive.classList.toggle('active', name === 'archive');
 
   sortBar.classList.toggle('hidden', name !== 'list');
 
   if (name === 'list') { renderAllNotes(); renderTagSidebar(); }
   if (name === 'search') { populateFilterTagSelect(); searchInput.focus(); renderSearch(); }
   if (name === 'trash') { renderTrash(); }
+  if (name === 'archive') { renderArchive(); }
   if (name === 'new' && !editingId && !hasPendingNote) {
     resetForm();
   }
@@ -1441,6 +1469,16 @@ function saveNote() {
           if (match._resolvedPinnedUrl && !newNote.pinnedUrl) {
             newNote.pinnedUrl = match._resolvedPinnedUrl;
           }
+          // Handle auto-archive
+          if (match.rule.archiveAfterDays) {
+            newNote.archiveAfter = Date.now() + (match.rule.archiveAfterDays * 86400000);
+          }
+          if (match.rule.archiveOnDate) {
+            const archiveDate = new Date(match.rule.archiveOnDate);
+            if (!isNaN(archiveDate.getTime())) {
+              newNote.archiveAfter = archiveDate.getTime();
+            }
+          }
         }
       }
     }
@@ -1529,6 +1567,7 @@ function buildCard(note, query = '', mode = 'normal') {
   const commentHtml = note.comment ? `<div class="note-comment">💬 ${highlight(note.comment, query, mode)}</div>` : '';
   const pinBadge = note.pinned ? `<span class="note-pin-badge">📌</span>` : '';
   const favBadge = note.favorite ? `<span class="note-fav-badge">⭐</span>` : '';
+  const archiveBadge = note._isFromArchive ? `<span class="note-arch-badge" title="Archived">📁</span>` : '';
   const remBadge = note.reminder ? `<span class="note-rem-badge">🔔</span>` : '';
   const folderBadge = settings.foldersEnabled && note.folder ? `<div class="folder-badge">📁 ${escapeHtml(folders.find(f => f.id === note.folder)?.name || 'Unknown')}</div>` : '';
   const siteBadge = note.pinnedUrl ? `<span class="note-site-badge" title="Pinned to ${escapeHtml(note.pinnedUrl)}">🔗</span>` : '';
@@ -1552,6 +1591,7 @@ function buildCard(note, query = '', mode = 'normal') {
     ${folderBadge}
     ${pinBadge}
     ${favBadge}
+    ${archiveBadge}
     ${remBadge}
     ${siteBadge}
     ${isSiteMatch ? `<div class="site-pinned-banner">🔗 Pinned to ${escapeHtml(note.pinnedUrl)}</div>` : ''}
@@ -1569,6 +1609,7 @@ function buildCard(note, query = '', mode = 'normal') {
         <button class="note-action-btn" data-action="duplicate" title="Duplicate">📄</button>
         <button class="note-action-btn" data-action="copy" title="Copy body">📋</button>
         <button class="note-action-btn" data-action="edit" title="Edit">✏️</button>
+        ${settings.archiveEnabled ? `<button class="note-action-btn" data-action="archive" title="Archive">📁</button>` : ''}
         <button class="note-action-btn" data-action="del"  title="Delete">🗑</button>
       </div>
     </div>
@@ -1707,8 +1748,17 @@ function renderSearch() {
     }
   }
 
+  // Search in notes
   let filtered = sortedNotes(notes).filter(n => matchesSearch(n, q, searchMode));
   filtered = applySearchFilters(filtered);
+
+  // Also search in archive if enabled
+  if (settings.archiveEnabled && archive.length > 0) {
+    const archiveFiltered = sortedNotes(archive).filter(n => matchesSearch(n, q, searchMode));
+    const archiveFilteredWithFlag = archiveFiltered.map(n => ({ ...n, _isFromArchive: true }));
+    filtered = [...filtered, ...archiveFilteredWithFlag];
+  }
+
   filtered.forEach(n => searchResults.appendChild(buildCard(n, q, searchMode)));
 }
 
@@ -1799,7 +1849,13 @@ function populateFilterTagSelect() {
 
 // ── CARD ACTIONS ────────────────────────────────
 function handleCardAction(action, id) {
-  const note = notes.find(n => n.id === id);
+  // Find note in notes or archive
+  let note = notes.find(n => n.id === id);
+  let noteSource = 'notes';
+  if (!note && archive.length > 0) {
+    note = archive.find(n => n.id === id);
+    noteSource = 'archive';
+  }
   if (!note) return;
 
   if (action === 'share') {
@@ -1890,6 +1946,21 @@ function handleCardAction(action, id) {
 
     showView('new');
     noteBody.focus();
+  }
+
+  if (action === 'archive') {
+    const isFromArchive = note._isFromArchive || archive.find(n => n.id === note.id);
+    if (isFromArchive) {
+      // Note is from archive, unarchive it
+      const archivedNote = archive.find(n => n.id === note.id);
+      if (archivedNote) {
+        unarchiveNote(archivedNote);
+        // Refresh search to remove from results
+        if (currentView === 'search') renderSearch();
+      }
+    } else {
+      archiveNote(note);
+    }
   }
 
   if (action === 'del') {
@@ -2258,6 +2329,65 @@ btnEmptyTrash.addEventListener('click', () => {
     showToast('🗑 Trash emptied');
   }
 });
+
+// ── ARCHIVE ───────────────────────────────────────
+function archiveNote(note) {
+  note.archivedAt = Date.now();
+  archive.unshift(note);
+  saveArchive();
+  // Remove from notes array
+  notes = notes.filter(n => n.id !== note.id);
+  saveNotes();
+  if (currentView === 'list') { renderAllNotes(); renderTagSidebar(); }
+  if (currentView === 'search') renderSearch();
+  showToast('📁 Archived!');
+}
+
+function unarchiveNote(note) {
+  delete note.archivedAt;
+  notes.unshift(note);
+  saveNotes();
+  // Remove from archive array
+  archive = archive.filter(n => n.id !== note.id);
+  saveArchive();
+  renderArchive();
+  showToast('↩️ Note restored!');
+}
+
+function renderArchive() {
+  archiveNotesEl.innerHTML = '';
+  if (archive.length === 0) {
+    archiveEmptyState.classList.remove('hidden');
+    return;
+  }
+  archiveEmptyState.classList.add('hidden');
+  archive.forEach(note => {
+    const card = document.createElement('div');
+    card.className = `note-card nc-${note.color || 0}`;
+    const archivedDate = note.archivedAt ? new Date(note.archivedAt).toLocaleDateString() : '';
+    card.innerHTML = `
+      ${note.title ? `<div class="note-title">${escapeHtml(note.title)}</div>` : ''}
+      ${note.body ? `<div class="note-body">${escapeHtml(note.body).substring(0, 120)}${note.body.length > 120 ? '…' : ''}</div>` : ''}
+      <div class="trash-meta">Archived ${archivedDate}</div>
+      <div class="trash-actions">
+        <button class="trash-btn unarchive" data-id="${note.id}">↩ Restore</button>
+        <button class="trash-btn archive-del" data-id="${note.id}">✕ Delete Forever</button>
+      </div>
+    `;
+    card.querySelector('.unarchive').addEventListener('click', () => unarchiveNote(note));
+    card.querySelector('.archive-del').addEventListener('click', () => {
+      if (confirm('Permanently delete this note?')) {
+        archive = archive.filter(n => n.id !== note.id);
+        saveArchive();
+        renderArchive();
+        showToast('🗑 Permanently deleted');
+      }
+    });
+    archiveNotesEl.appendChild(card);
+  });
+}
+
+btnArchive.addEventListener('click', () => showView('archive'));
 
 // ── RICH TEXT TOOLBAR ────────────────────────────
 mdToolbar.addEventListener('click', e => {

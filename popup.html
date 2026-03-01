@@ -32,6 +32,7 @@
     <button class="toolbar-btn" id="btnSearch">⌕ Search</button>
     <button class="toolbar-btn" id="btnList">≡ All Notes</button>
     <button class="toolbar-btn" id="btnTrash">🗑 Trash</button>
+    <button class="toolbar-btn" id="btnArchive">📁 Archive</button>
   </div>
 
   <!-- ── SORT BAR (shows in List view) ── -->
@@ -219,6 +220,18 @@
     </div>
   </div>
 
+  <!-- ══ VIEW: ARCHIVE ══ -->
+  <div class="view hidden" id="viewArchive">
+    <div class="archive-header">
+      <span class="archive-title">📁 Archive</span>
+    </div>
+    <div class="notes-list" id="archiveNotes"></div>
+    <div class="empty-state hidden" id="archiveEmptyState">
+      <div class="empty-icon">📁</div>
+      <p>Archive is empty.<br />Archived notes appear here.</p>
+    </div>
+  </div>
+
   <!-- ── TOAST ── -->
   <div class="toast hidden" id="toast">
     <span class="toast-msg" id="toastMsg"></span>
@@ -353,6 +366,18 @@
           </label>
         </div>
         <div class="rule-edit-group">
+          <label class="rule-label">📁 Auto-Archive</label>
+          <div class="rule-row">
+            <label>After days:</label>
+            <input type="number" id="ruleArchiveAfterDays" min="1" placeholder="e.g., 30" style="width: 80px;">
+          </div>
+          <div class="rule-row">
+            <label>On date:</label>
+            <input type="date" id="ruleArchiveOnDate" style="width: 140px;">
+          </div>
+          <div class="rule-hint">Note will be archived automatically after the specified time</div>
+        </div>
+        <div class="rule-edit-group">
           <label>
             <input type="checkbox" id="ruleEnabled" checked>
             Enabled
@@ -474,6 +499,11 @@
             <label class="setting-label">Statistics Dashboard</label>
             <input type="checkbox" class="setting-checkbox" id="settingStats">
             <span class="setting-hint">Show note statistics in About tab</span>
+          </div>
+          <div class="setting-group">
+            <label class="setting-label">Archive</label>
+            <input type="checkbox" class="setting-checkbox" id="settingArchive">
+            <span class="setting-hint">Enable archive feature for old notes</span>
           </div>
           <div class="setting-group">
             <label class="setting-label">Sync Mode</label>
