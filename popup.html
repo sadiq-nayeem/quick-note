@@ -471,6 +471,11 @@
             </div>
           </div>
           <div class="setting-group">
+            <label class="setting-label">Statistics Dashboard</label>
+            <input type="checkbox" class="setting-checkbox" id="settingStats">
+            <span class="setting-hint">Show note statistics in About tab</span>
+          </div>
+          <div class="setting-group">
             <label class="setting-label">Sync Mode</label>
             <select class="setting-select" id="settingSyncMode">
               <option value="off">Off</option>
@@ -588,6 +593,34 @@
             <h3>QuickNote v1.0.0</h3>
             <p>Fast, beautiful, always-there note-taking.</p>
             <p class="credits">© 2024 — Released under MIT License</p>
+          </div>
+
+          <div id="statsContainer">
+            <div class="stats-dashboard">
+              <div class="stat-card">
+                <div class="stat-value" id="statTotalNotes">0</div>
+                <div class="stat-label">Total Notes</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" id="statThisWeek">0</div>
+                <div class="stat-label">This Week</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" id="statTotalWords">0</div>
+                <div class="stat-label">Total Words</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" id="statAvgWords">0</div>
+                <div class="stat-label">Avg Words/Note</div>
+              </div>
+            </div>
+
+            <div class="stats-tags-section">
+              <h4>Most Used Tags</h4>
+              <div class="stats-tags" id="statsTopTags">
+                <span class="stats-empty">No tags yet</span>
+              </div>
+            </div>
           </div>
 
           <div class="help-section">

@@ -41,7 +41,8 @@ let settings = {
   foldersEnabled: true,        // Enable folders/notebooks
   syncMode: 'off',             // 'off' | 'cloud' | 'local' | 'both'
   richEditorEnabled: true,     // Show markdown toolbar
-  noteSharingEnabled: true     // Show share action button on notes
+  noteSharingEnabled: true,    // Show share action button on notes
+  statsEnabled: true           // Show statistics dashboard in About tab
 };
 
 let currentTabHost = '';  // hostname of the active browser tab
@@ -104,6 +105,69 @@ function countWordsChars(str) {
   const chars = str.length;
   const words = str.trim() === '' ? 0 : str.trim().split(/\s+/).length;
   return `${chars} char${chars !== 1 ? 's' : ''} · ${words} word${words !== 1 ? 's' : ''}`;
+}
+
+function calculateStats() {
+  // Total notes
+  const totalNotes = notes.length;
+
+  // Notes this week (last 7 days)
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const notesThisWeek = notes.filter(n => n.createdAt && n.createdAt >= weekAgo).length;
+
+  // Word counts
+  let totalWords = 0;
+  notes.forEach(note => {
+    const words = note.body ? note.body.trim().split(/\s+/).filter(w => w.length > 0).length : 0;
+    totalWords += words;
+  });
+  const avgWords = totalNotes > 0 ? Math.round(totalWords / totalNotes) : 0;
+
+  // Tag counts
+  const tagCounts = {};
+  notes.forEach(note => {
+    if (note.tags) {
+      note.tags.forEach(tag => {
+        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+      });
+    }
+  });
+
+  // Sort tags by count, get top 8
+  const sortedTags = Object.entries(tagCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8);
+
+  return { totalNotes, notesThisWeek, totalWords, avgWords, sortedTags };
+}
+
+function updateStatsDashboard() {
+  const stats = calculateStats();
+
+  // Toggle visibility based on setting
+  const statsContainer = document.getElementById('statsContainer');
+  if (statsContainer) {
+    statsContainer.classList.toggle('hidden', !settings.statsEnabled);
+  }
+
+  // Skip updates if stats are disabled
+  if (!settings.statsEnabled) return;
+
+  // Update stat cards
+  document.getElementById('statTotalNotes').textContent = stats.totalNotes;
+  document.getElementById('statThisWeek').textContent = stats.notesThisWeek;
+  document.getElementById('statTotalWords').textContent = stats.totalWords.toLocaleString();
+  document.getElementById('statAvgWords').textContent = stats.avgWords;
+
+  // Update top tags
+  const tagsContainer = document.getElementById('statsTopTags');
+  if (stats.sortedTags.length === 0) {
+    tagsContainer.innerHTML = '<span class="stats-empty">No tags yet</span>';
+  } else {
+    tagsContainer.innerHTML = stats.sortedTags.map(([tag, count]) =>
+      `<span class="stats-tag">#${escapeHtml(tag)}<span class="stats-tag-count">${count}</span></span>`
+    ).join('');
+  }
 }
 
 function escapeHtml(str) {
@@ -372,6 +436,7 @@ const settingAutoTagDomain = document.getElementById('settingAutoTagDomain');
 const settingContextMenuAutoPin = document.getElementById('settingContextMenuAutoPin');
 const settingTrash = document.getElementById('settingTrash');
 const settingFolders = document.getElementById('settingFolders');
+const settingStats = document.getElementById('settingStats');
 const btnManageFolders = document.getElementById('btnManageFolders');
 const settingSyncMode = document.getElementById('settingSyncMode');
 const settingRichEditor = document.getElementById('settingRichEditor');
@@ -546,6 +611,7 @@ function loadNotes() {
         hasPendingNote = false;
       }
 
+      updateStatsDashboard();
       resolve();
     });
   });
@@ -554,6 +620,7 @@ function loadNotes() {
 function saveNotes() {
   chrome.storage.local.set({ qn_notes: notes });
   updateNoteCount();
+  updateStatsDashboard();
   // Sync
   if (settings.syncMode === 'cloud' || settings.syncMode === 'both') syncToCloud();
   if (settings.syncMode === 'local' || settings.syncMode === 'both') syncToLocal();
@@ -610,6 +677,7 @@ function openSettings() {
   settingContextMenuAutoPin.checked = settings.contextMenuAutoPin !== false;
   settingTrash.checked = settings.trashEnabled !== false;
   settingFolders.checked = settings.foldersEnabled !== false;
+  settingStats.checked = settings.statsEnabled !== false;
   settingSyncMode.value = settings.syncMode || 'off';
   settingRichEditor.checked = settings.richEditorEnabled !== false;
   if (settingNoteSharing) settingNoteSharing.checked = settings.noteSharingEnabled !== false;
@@ -627,6 +695,8 @@ function openSettings() {
   const firstTabContent = document.getElementById('tabGeneral');
   if (firstTabBtn) firstTabBtn.classList.add('active');
   if (firstTabContent) firstTabContent.classList.remove('hidden');
+
+  updateStatsDashboard();
 
   settingsOverlay.classList.remove('hidden');
 }
@@ -670,6 +740,7 @@ btnSaveSettings.addEventListener('click', () => {
   settings.contextMenuAutoPin = settingContextMenuAutoPin.checked;
   settings.trashEnabled = settingTrash.checked;
   settings.foldersEnabled = settingFolders.checked;
+  settings.statsEnabled = settingStats.checked;
   settings.syncMode = settingSyncMode.value;
   settings.richEditorEnabled = settingRichEditor.checked;
   if (settingNoteSharing) settings.noteSharingEnabled = settingNoteSharing.checked;
