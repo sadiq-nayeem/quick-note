@@ -905,6 +905,37 @@ themeBtn.addEventListener('click', () => {
   }
 });
 
+// ── FULLSCREEN MODE ─────────────────────────────
+const fullscreenBtn = document.getElementById('fullscreenBtn');
+const isRunningAsTab = window.location === window.parent.location &&
+  !window.matchMedia('(display-mode: browser)').matches &&
+  document.documentElement.clientWidth > 400;
+
+// Auto-detect: if opened as a tab (wider than popup), enable fullscreen mode
+function enableFullscreenMode() {
+  document.body.classList.add('fullscreen-mode');
+  if (fullscreenBtn) fullscreenBtn.textContent = '⊡';
+  if (fullscreenBtn) fullscreenBtn.title = 'Running in full screen';
+}
+
+// Check on load if we're in a tab
+if (document.documentElement.clientWidth > 400) {
+  enableFullscreenMode();
+}
+
+if (fullscreenBtn) {
+  fullscreenBtn.addEventListener('click', () => {
+    if (document.body.classList.contains('fullscreen-mode')) {
+      // Already in fullscreen (tab mode), can't go back to popup
+      showToast('📌 Already in full screen mode');
+      return;
+    }
+    // Open popup.html as a new tab
+    chrome.tabs.create({ url: chrome.runtime.getURL('popup.html') });
+    window.close(); // Close the popup
+  });
+}
+
 // ── KEYBOARD SHORTCUTS ──────────────────────────
 document.addEventListener('keydown', e => {
   // Alt+N: New note

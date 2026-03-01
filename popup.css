@@ -241,6 +241,53 @@ body {
   user-select: none;
 }
 
+/* ── FULLSCREEN MODE ── */
+body.fullscreen-mode {
+  width: 100vw;
+  height: 100vh;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+body.fullscreen-mode .header,
+body.fullscreen-mode .toolbar {
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+}
+
+body.fullscreen-mode .views {
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+}
+
+body.fullscreen-mode .settings-modal {
+  max-width: 600px;
+  max-height: 80vh;
+}
+
+body.fullscreen-mode .rules-modal {
+  max-width: 600px;
+  max-height: 80vh;
+}
+
+body.fullscreen-mode .note-body {
+  min-height: 250px;
+}
+
+body.fullscreen-mode .fab {
+  right: calc(50% - 450px + 20px);
+}
+
+@media (max-width: 940px) {
+  body.fullscreen-mode .fab {
+    right: 20px;
+  }
+}
+
 /* ── HEADER ── */
 .header {
   display: flex;
