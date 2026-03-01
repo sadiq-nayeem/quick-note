@@ -515,9 +515,16 @@ function loadNotes() {
       folders = data.qn_folders || [];
 
       // Load theme
-      if (data.qn_theme === 'dark') {
+      const theme = data.qn_theme || 'light';
+      if (theme === 'dark') {
         document.documentElement.setAttribute('data-theme', 'dark');
         themeBtn.textContent = '☀';
+      } else if (theme !== 'light') {
+        // Pastel themes
+        document.documentElement.setAttribute('data-theme', theme);
+        themeBtn.textContent = '🌙';
+      } else {
+        themeBtn.textContent = '🌙';
       }
 
       // Load settings
@@ -682,13 +689,17 @@ themeOptions.forEach(btn => {
     const theme = btn.dataset.theme;
     themeOptions.forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    if (theme === 'dark') {
-      document.documentElement.setAttribute('data-theme', 'dark');
-      themeBtn.textContent = '☀';
-    } else {
+
+    // Apply theme
+    if (theme === 'light') {
       document.documentElement.removeAttribute('data-theme');
       themeBtn.textContent = '🌙';
+    } else {
+      document.documentElement.setAttribute('data-theme', theme);
+      // Show sun icon for dark, moon for pastel themes
+      themeBtn.textContent = theme === 'dark' ? '☀' : '🌙';
     }
+
     chrome.storage.local.set({ qn_theme: theme });
   });
 });

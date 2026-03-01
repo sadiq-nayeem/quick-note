@@ -65,6 +65,159 @@
   --ct6: #90D890;
 }
 
+/* ── PASTEL THEMES ── */
+
+/* Pastel Pink */
+[data-theme="pastel-pink"] {
+  --bg: #FFF0F5;
+  --surface: #FFF5FA;
+  --border: #FFD6E6;
+  --text: #5A2A3A;
+  --text-sub: #A06078;
+  --accent: #FF9CC0;
+  --accent-dk: #FF7BAC;
+  --danger: #FF6B6B;
+  --shadow: 0 4px 16px rgba(255, 150, 180, .18);
+
+  /* note palette — pastel pink */
+  --c0: #FFE4F0;
+  /* rose    */
+  --c1: #E8F0FF;
+  /* periwinkle*/
+  --c2: #F0E6FF;
+  /* lilac   */
+  --c3: #FFE8F0;
+  --c4: #FFF0E6;
+  /* cream   */
+  --c5: #FFD6EC;
+  /* blush   */
+  --c6: #E6FFF5;
+  /* mint-tint*/
+
+  /* note text palette */
+  --ct0: #8B3A5A;
+  --ct1: #3A5A8B;
+  --ct2: #5A3A8B;
+  --ct3: #8B3A5A;
+  --ct4: #8B6A3A;
+  --ct5: #8B2A60;
+  --ct6: #2A6B4A;
+}
+
+/* Pastel Blue */
+[data-theme="pastel-blue"] {
+  --bg: #F0F8FF;
+  --surface: #F5FAFF;
+  --border: #D6E6FF;
+  --text: #2A3A5A;
+  --text-sub: #6070A0;
+  --accent: #7BB8FF;
+  --accent-dk: #5A9CE8;
+  --danger: #FF6B6B;
+  --shadow: 0 4px 16px rgba(120, 160, 255, .18);
+
+  /* note palette — pastel blue */
+  --c0: #E6F0FF;
+  /* sky     */
+  --c1: #E8FFF8;
+  /* aqua    */
+  --c2: #F0E6FF;
+  /* periwinkle*/
+  --c3: #E6ECFF;
+  /* indigo  */
+  --c4: #FFF8E6;
+  /* cream   */
+  --c5: #FFE6F8;
+  /* orchid  */
+  --c6: #E6FFF0;
+  /* seafoam */
+
+  /* note text palette */
+  --ct0: #2A4A8B;
+  --ct1: #2A6B5A;
+  --ct2: #4A3A8B;
+  --ct3: #2A3A8B;
+  --ct4: #8B7A2A;
+  --ct5: #8B2A6A;
+  --ct6: #2A6B3A;
+}
+
+/* Pastel Purple */
+[data-theme="pastel-purple"] {
+  --bg: #F5F0FF;
+  --surface: #FAF5FF;
+  --border: #E6D6FF;
+  --text: #3A2A5A;
+  --text-sub: #7860A0;
+  --accent: #B89CFF;
+  --accent-dk: #9C7BE8;
+  --danger: #FF6B6B;
+  --shadow: 0 4px 16px rgba(160, 120, 255, .18);
+
+  /* note palette — pastel purple */
+  --c0: #FFE6FF;
+  /* magenta-tint*/
+  --c1: #E6FFF5;
+  /* mint-tint */
+  --c2: #F0E6FF;
+  /* violet  */
+  --c3: #E8F0FF;
+  /* periwinkle*/
+  --c4: #FFF8E6;
+  /* cream   */
+  --c5: #FFE6F5;
+  /* pink-tint*/
+  --c6: #E6FFE8;
+  /* sage-tint*/
+
+  /* note text palette */
+  --ct0: #8B3A8B;
+  --ct1: #2A6B4A;
+  --ct2: #5A3A8B;
+  --ct3: #3A4A8B;
+  --ct4: #8B7A2A;
+  --ct5: #8B2A6A;
+  --ct6: #3A6B3A;
+}
+
+/* Pastel Mint */
+[data-theme="pastel-mint"] {
+  --bg: #F0FFF5;
+  --surface: #F5FFFA;
+  --border: #D6FFE6;
+  --text: #2A5A3A;
+  --text-sub: #60A078;
+  --accent: #7BFFB8;
+  --accent-dk: #5AE89C;
+  --danger: #FF6B6B;
+  --shadow: 0 4px 16px rgba(120, 220, 180, .18);
+
+  /* note palette — pastel mint */
+  --c0: #FFF0E6;
+  /* peach   */
+  --c1: #E6FFF0;
+  /* fresh   */
+  --c2: #F0E6FF;
+  /* lilac   */
+  --c3: #E6F8FF;
+  /* sky-tint*/
+  --c4: #FFFFE6;
+  /* vanilla */
+  --c5: #FFE6F5;
+  /* blush   */
+  --c6: #E6FFEC;
+  /* leaf    */
+
+  /* note text palette */
+  --ct0: #8B5A2A;
+  --ct1: #2A6B3A;
+  --ct2: #5A3A8B;
+  --ct3: #2A5A8B;
+  --ct4: #8B7A2A;
+  --ct5: #8B2A5A;
+  --ct6: #2A6B2A;
+}
+
 /* ── RESET & BASE ── */
 *,
 *::before,
@@ -1642,12 +1795,12 @@ body {
 }
 
 .setting-theme {
-  display: flex;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
 }
 
 .theme-option {
-  flex: 1;
   font-family: var(--font);
   font-size: 12px;
   font-weight: 600;
