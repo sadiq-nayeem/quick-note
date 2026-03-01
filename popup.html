@@ -841,55 +841,76 @@
           </div>
 
           <div class="help-section">
-            <h3>📖 Guide</h3>
+            <h3>📖 Comprehensive Guide</h3>
 
             <div class="help-item">
-              <h4>Core Features</h4>
-              <p>Create new notes, search powerfully, manage folders, auto-tag with <code>#tags</code>, sort
-                dynamically, and color-code notes.</p>
-            </div>
-
-            <div class="help-item">
-              <h4>Smart Rules & Automation</h4>
-              <p>Define regex patterns (e.g. <code>CL-(\d+)</code>) that automatically apply formatting and actions when
-                matched in your notes. Use capture groups like <code>$1</code> in your templates.</p>
+              <h4>Interface & Navigation</h4>
               <ul>
-                <li><strong>Formatting:</strong> Auto-set titles, comment templates, or colors.</li>
-                <li><strong>Organization:</strong> Auto-assign to a specific Folder or apply auto-tags (e.g.
-                  <code>#jira-$1</code>).
-                </li>
-                <li><strong>Actions:</strong> Auto-pin to the top (📌), mark as favorite (⭐), or set recurring
-                  reminders.</li>
-                <li><strong>Site Pinning:</strong> Auto-pin notes to specific websites (e.g. <code>github.com</code>) so
-                  they appear first when you visit that site.</li>
+                <li><strong>Full Screen Mode (⛶):</strong> Click the icon in the header to expand QuickNote into a full
+                  browser tab for an immersive experience.</li>
+                <li><strong>Floating Action Button (＋):</strong> Quickly create new notes from anywhere using the button
+                  in the bottom-right corner.</li>
+                <li><strong>Default View:</strong> Customize whether QuickNote opens to <em>All Notes</em> or a <em>New
+                    Note</em> form by default.</li>
+                <li><strong>Themes (🌙/☀️/🎨):</strong> Choose between Light/Dark modes, or pick a vibrant color theme
+                  in the Appearance tab.</li>
               </ul>
             </div>
 
             <div class="help-item">
-              <h4>Advanced Rule Editing ({ } JSON)</h4>
-              <p>For tech-savvy users, click the <code>{ } JSON</code> button in the Smart Rules editor to manage rules
-                in raw JSON format. Perfect for bulk editing, backing up rules, or sharing rulesets with your team.</p>
-              <p><em>Example JSON Rule:</em><br>
-                <code>{"name":"Review","pattern":"PR-(\\d+)","titleTemplate":"Review PR-$1","pinned":true,"tags":"#pr","favorite":true}</code>
-              </p>
+              <h4>Core Organization</h4>
+              <ul>
+                <li><strong>Folders:</strong> Group notes into dedicated notebooks. Manage folders in Settings >
+                  General.</li>
+                <li><strong>Tags & Auto-Tagging:</strong> Use <code>#tags</code> anywhere in your note. The app can even
+                  auto-tag notes with the domain name of the current website (e.g., <code>#github-com</code>).</li>
+                <li><strong>Site Pinning:</strong> Pin notes to specific websites. They'll appear at the top of your
+                  list whenever you visit those sites again.</li>
+                <li><strong>Trash & Archive:</strong> Deleted notes first go to the Trash. Keep your workspace clean by
+                  moving older notes to the Archive folder (📁).</li>
+              </ul>
             </div>
 
             <div class="help-item">
-              <h4>Productivity</h4>
-              <p>Use the context menu to quick-capture web text. Enable the global shortcut to launch anytime. Save
-                notes silently in the background.</p>
+              <h4>Smart Rules & Automation</h4>
+              <p>Automate your workflow by defining regex patterns (e.g. <code>CL-(\d+)</code>) and capture groups
+                (<code>$1</code>).</p>
+              <ul>
+                <li><strong>Rule Presets:</strong> Quickly create rules for Meeting Notes, Bug Trackers, Link Savers,
+                  Journals, or Code Snippets using built-in templates.</li>
+                <li><strong>Live Regex Preview:</strong> Test your patterns against sample text in real-time, right
+                  inside the rule editor.</li>
+                <li><strong>Templates:</strong> Auto-fill note Titles, Comments, and even the full Body (great for
+                  checklists and agendas).</li>
+                <li><strong>Auto-actions:</strong> Automatically assign colors, folders, tags, recurring reminders, or
+                  pin notes when patterns match.</li>
+                <li><strong>Drag-to-Reorder:</strong> Reorder rules using the ☰ handle to control execution priority
+                  ("First Match Wins").</li>
+                <li><strong>Import/Export Rules:</strong> Share your best automation rulesets as lightweight JSON files.
+                </li>
+              </ul>
             </div>
 
             <div class="help-item">
-              <h4>Note Linking</h4>
-              <p>Type <code>[[note-title]]</code> in any note to instantly link to or cross-reference other existing
-                notes.</p>
+              <h4>Rich Editor & Sharing</h4>
+              <ul>
+                <li><strong>Markdown Support:</strong> Use the Rich Text Toolbar or raw markdown syntax.
+                  <code>[[note-title]]</code> automatically cross-references other existing notes.</li>
+                <li><strong>Note Sharing:</strong> Export individual notes as raw Markdown, rich formatted HTML, or
+                  generate beautiful images to share gracefully.</li>
+              </ul>
             </div>
 
             <div class="help-item">
-              <h4>Reminders</h4>
-              <p>Set precise date/time reminders for follow-ups. Customize notification actions like snooze or
-                auto-dismiss.</p>
+              <h4>Data & Sync</h4>
+              <ul>
+                <li><strong>Context Menu:</strong> Right-click selected text on any webpage to save directly into
+                  QuickNote.</li>
+                <li><strong>Sync Modes:</strong> Choose between local-only storage or cloud-syncing across your Chrome
+                  browser instances.</li>
+                <li><strong>Import/Export:</strong> Securely backup all your notes to a JSON file, and restore them
+                  anytime on another machine.</li>
+              </ul>
             </div>
 
             <div class="help-item">
@@ -897,7 +918,8 @@
               <ul class="help-shortcuts">
                 <li><kbd>Alt</kbd> + <kbd>N</kbd> : New Note</li>
                 <li><kbd>Alt</kbd> + <kbd>S</kbd> : Search</li>
-                <li><kbd>Esc</kbd> : Cancel/Close</li>
+                <li><kbd>Ctrl/Cmd</kbd> + <kbd>Enter</kbd> : Save Note</li>
+                <li><kbd>Esc</kbd> : Cancel / Close Modal</li>
               </ul>
             </div>
           </div>
